@@ -24,7 +24,7 @@ module type ExpertsysSig =
 		val getBoolValue : expr -> fact -> bool
 		val evalBool : expr -> fact -> bool
 		val eval : rule -> fact -> fact (* ? *)
-		(* val printFacts : fact -> () *)
+		val printFacts : fact -> unit
 		(* val eval : expr -> fact -> fact (\* ? *\) *)
 	end
 
@@ -50,7 +50,8 @@ module Expertsys : (ExpertsysSig with type t = char) =
 		(* let rec eval e = *)
 		let addToTrueFacts (Facts (trueFacts, falseFacts)) exp =
 			Facts (trueFacts @ [exp], falseFacts)
-let getBoolValue value (Facts (trueFacts, falseFacts)) =
+
+		let getBoolValue value (Facts (trueFacts, falseFacts)) =
 			let checkValue (vl:expr) = (* (Value toCmp) = *)
 				match vl with
 				| Value v ->
@@ -68,20 +69,22 @@ let getBoolValue value (Facts (trueFacts, falseFacts)) =
 				(* | hd::tl when hd = value -> true *)
 				| hd::tl -> loop tl
 			in
-loop trueFacts
+			loop trueFacts
+
 		let rec evalBool e (facts:fact) =
 			match e with
 			| Not (exp) -> not (evalBool exp facts)
 			| And (e1, e2) -> (evalBool e1 facts) && (evalBool e2 facts)
 			| Or (e1, e2) -> (evalBool e1 facts) || (evalBool e2 facts)
 			| Xor (e1, e2) -> (evalBool e1 facts) <> (evalBool e2 facts)
-			| Value v -> (getBoolValue v facts) (* v a le type t = char mais il attend un type value*)
-			| _ -> false
+			| Value v -> (getBoolValue (Value v) facts) (* v a le type t = char mais il attend un type value*)
+			(* | _ -> false *)
+
 		let rec eval e (facts:fact) =
 			match e with
 			(* | Impl (e1, e2) when (eval e1) = true -> (makeTrue e2); true (\* va pas marcher *\) *)
 			(* | Impl (e1, e2) when (eval e1) = true -> (addToTrueFacts facts e2) *)
-| Impl (e1, e2) when (evalBool e1 facts) = true -> (addToTrueFacts facts e2) (* e2 fail *)
+			| Impl (e1, e2) when (evalBool e1 facts) = true -> (addToTrueFacts facts e2) (* e2 fail *)
 			(* | Impl (e1, e2) -> false (\* va pas marcher *\) *)
 			| Impl (e1, e2) -> facts (* va pas marcher *)
 			(* | Ifoif (e1, e2) when *) (* BONUS !!! *)
@@ -90,21 +93,22 @@ loop trueFacts
 
 			(* | Value v -> v *)
 			(* | Value v -> (getBoolValue v) *)
-		let printFacts ((trueFacts, falseFacts):fact) =
+
+		let printFacts (Facts (trueFacts, falseFacts)) =
 			let rec stringOfExpr e =
 				match e with
 				| Not (exp) -> ("( NOT " ^ (stringOfExpr exp) ^ ")")
-				| And (e1, e2) -> ("( " ^ (stringOfExpr e1) ^ " AND " (stringOfExpr e2) ^ " )")
-				| Or (e1, e2) -> ("( " ^ (stringOfExpr e1) ^ " OR " (stringOfExpr e2) ^ " )")
-				| Xor (e1, e2) -> ("( " ^ (stringOfExpr e1) ^ " XOR " (stringOfExpr e2) ^ " )")
+				| And (e1, e2) -> ("( " ^ (stringOfExpr e1) ^ " AND " ^ (stringOfExpr e2) ^ " )")
+				| Or (e1, e2) -> ("( " ^ (stringOfExpr e1) ^ " OR " ^ (stringOfExpr e2) ^ " )")
+				| Xor (e1, e2) -> ("( " ^ (stringOfExpr e1) ^ " XOR " ^ (stringOfExpr e2) ^ " )")
 				| Value v -> Char.escaped v
-				| _ -> "wut?"
+				(* | _ -> "wut?" *)
 			in
 			let rec loop lst boolVal =
 				match lst with
 				| [] -> print_char '\n'
 				(* | hd::tl -> print_endline ((Char.escaped hd) ^ " is " ^ boolVal); loop tl boolval *)
-				| hd::tl -> print_endline ((stringOfExpr hd) ^ " is " ^ boolVal); loop tl boolval
+				| hd::tl -> print_endline ((stringOfExpr hd) ^ " is " ^ boolVal); loop tl boolVal
 			in
 			loop trueFacts "true";
 			loop falseFacts "false"
@@ -114,13 +118,13 @@ loop trueFacts
 let main () =
 	(* A | B => E *)
 	(* =AC *)
-	let factz = EXPERTSYS.Facts ([(EXPERTSYS.Value 'A'); (EXPERTSYS.Value 'C')], []) in
-	let exp1 = EXPERTSYS.Impl (EXPERTSYS.Or (EXPERTSYS.Value 'A', EXPERTSYS.Value 'B'), EXPERTSYS.Value 'E') in
+	let factz = Expertsys.Facts ([(Expertsys.Value 'A'); (Expertsys.Value 'C')], []) in
+	let exp1 = Expertsys.Impl (Expertsys.Or (Expertsys.Value 'A', Expertsys.Value 'B'), Expertsys.Value 'E') in
 	print_endline "BEFORE :";
-	EXPERTSYS.printFacts factz;
-	let result = EXPERTSYS.eval exp1 factz in
+	Expertsys.printFacts factz;
+	let result = Expertsys.eval exp1 factz in
 	print_endline "RESULT :";
-	EXPERTSYS.printFacts result
+	Expertsys.printFacts result
 
 let () = main ()
 
