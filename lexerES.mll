@@ -59,7 +59,7 @@ let rec printMyList ls =
 		begin
 			match hd with
 			| ParentIn 	-> print_string " -( " ; printMyList tl
-			| ParentOut 	-> print_string " )- " ; printMyList tl
+			| ParentOut -> print_string " )- " ; printMyList tl
 			| Not		-> print_string " NOT" ; printMyList tl
 			| Or		-> print_string " OR " ; printMyList tl
 			| And		-> print_string " AND " ; printMyList tl
@@ -72,9 +72,57 @@ let rec printMyList ls =
 			| NewLine	-> print_string "  -NL-\n" ; printMyList tl
 		end
 
+let cleanList lst =
+	let rec loop ls rl =
+		match ls with
+		| [] -> rl
+		| hd::tl when hd = NewLine	-> skipNL tl (rl @ [hd])
+		| hd::tl 					-> loop tl (rl @ [hd])
+	and skipNL ls rl =
+		match ls with
+		| [] -> rl
+		| hd::tl when hd = NewLine 	-> skipNL tl rl
+		| hd::tl 					-> loop tl (rl @ [hd])
+	in
+	skipNL lst []
+
+
+(* Parenthese | Facts | Operateur | NewLine *)
+module Tag = struct type t = Ps | Fs | Op | Nl end
+
+let checkList lst =
+	let matchTag value =
+		match value with
+			| ParentIn
+			| ParentOut -> Tag.Ps
+			| Not
+			| Or
+			| And
+			| Xor
+			| Impl
+			| Ifoif
+			| TrueFacts
+			| Requests	-> Tag.Op
+			| Fact _	-> Tag.Fs
+			| NewLine	-> Tag.Nl
+	in
+	let rec loop ls =
+		match ls with
+		| [] -> ()
+		| hd::tl when hd = TrueFacts || hd = Requests	-> checkFactList tl
+		| hd::tl 										-> loop tl
+	and checkFactList ls =
+		match ls with
+		| [] -> ()
+		| hd::tl when (matchTag hd) = Tag.Fs			-> checkFactList tl
+		| hd::tl when hd = NewLine						-> loop tl
+		| hd::tl										-> raise (invalid_arg "Parsing error : wrong value after true facts or request")
+	in
+	loop lst
+
 let lexExpSys chan debug =
 	let lexbuf = Lexing.from_channel chan in
-	let returnList = tokenLex [] lexbuf in
+	let returnList = cleanList (tokenLex [] lexbuf) in
 	if debug = true then printMyList returnList;
 	returnList
 
