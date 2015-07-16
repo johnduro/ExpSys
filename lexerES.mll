@@ -68,7 +68,7 @@ let rec printMyList ls =
 			| Ifoif		-> print_string " <=> " ; printMyList tl
 			| TrueFacts -> print_string " TRUE FACTS : " ; printMyList tl
 			| Requests	-> print_string " REQUEST : " ; printMyList tl
-			| Fact (fx) -> print_string (" -" ^ (Char.escaped fx)^ "- ") ; printMyList tl
+			| Fact (fx) -> print_string (" -" ^ (Char.escaped fx) ^ "- ") ; printMyList tl
 			| NewLine	-> print_string "  -NL-\n" ; printMyList tl
 		end
 
@@ -87,38 +87,6 @@ let cleanList lst =
 	skipNL lst []
 
 
-(* Parenthese | Facts | Operateur | NewLine *)
-module Tag = struct type t = Ps | Fs | Op | Nl end
-
-let checkList lst =
-	let matchTag value =
-		match value with
-			| ParentIn
-			| ParentOut -> Tag.Ps
-			| Not
-			| Or
-			| And
-			| Xor
-			| Impl
-			| Ifoif
-			| TrueFacts
-			| Requests	-> Tag.Op
-			| Fact _	-> Tag.Fs
-			| NewLine	-> Tag.Nl
-	in
-	let rec loop ls =
-		match ls with
-		| [] -> ()
-		| hd::tl when hd = TrueFacts || hd = Requests	-> checkFactList tl
-		| hd::tl 										-> loop tl
-	and checkFactList ls =
-		match ls with
-		| [] -> ()
-		| hd::tl when (matchTag hd) = Tag.Fs			-> checkFactList tl
-		| hd::tl when hd = NewLine						-> loop tl
-		| hd::tl										-> raise (invalid_arg "Parsing error : wrong value after true facts or request")
-	in
-	loop lst
 
 let lexExpSys chan debug =
 	let lexbuf = Lexing.from_channel chan in
