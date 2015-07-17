@@ -22,10 +22,12 @@ let checkList lst =
 	let rec loop ls =
 		match ls with
 		| [] -> ()
-		| hd::tl when hd = TrueFacts || hd = Requests	-> checkFactList tl
-		| hd::tl when (matchTag hd) = Tag.Ps			-> loop (checkParenthesis ls true)
+		| hd::tl when hd = TrueFacts || hd = Requests				-> checkFactList tl
+		| hd::tl when hd = ParentIn && (checkParenthesis ls true)	-> loop tl
+		| hd::tl when hd = ParentIn									-> raise (invalid_arg "Parsing error : ")
+		(* | hd::tl when (matchTag hd) = Tag.Ps			-> loop (checkParenthesis ls true) *)
 		| hd::tl 										-> loop tl
-	(* A REVOIR *)
+	(* A REVOIR  checkparenthesis devient un simple check des parenthese *)
 	and checkParenthesis ls isIn =
 		match ls with
 		| [] -> []
@@ -33,7 +35,8 @@ let checkList lst =
 		| hd::tl when hd = ParentIn						-> checkParenthesis (checkParenthesis ls true) false
 		| hd::tl when hd = ParentOut && isIn			-> raise (invalid_arg "Parsing error : no matching parenthesis")
 		| hd::tl when hd = ParentOut					-> tl
-		| hd::tl										-> checkParenthesis tl false
+		(* | hd::tl										-> checkParenthesis tl false *)
+		| hd::tl										-> loop ls
 	(* A REVOIR *)
 	and checkOperator ls =
 		| [] -> []
