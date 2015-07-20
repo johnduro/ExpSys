@@ -1,0 +1,9 @@
+
+# probleme de parenthese ouvrante :
+
+A + B | (C + (D | F))) => E
+#A + B | C + D | F) => E
+
+=ACD
+
+?E

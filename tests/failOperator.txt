@@ -1,0 +1,10 @@
+
+#probleme d'operateurs :
+
+A + + A => B
+#A + A => B |
+#B <=>
+
+=A
+
+?B

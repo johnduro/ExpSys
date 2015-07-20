@@ -1,0 +1,9 @@
+
+# probleme de parenthese fermante :
+
+A + (B | (C + (D | F)) => E
+#A + (B | C + D | F => E
+
+=ACD
+
+?E

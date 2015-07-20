@@ -2,7 +2,7 @@
 
 OCAMLMAKEFILE = OCamlMakefile
 
-SOURCES = lexerES.mll main.ml
+SOURCES = lexerES.mll parserES.ml main.ml
 RESULT  = expertSystem
 
 include $(OCAMLMAKEFILE)

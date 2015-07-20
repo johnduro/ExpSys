@@ -1,0 +1,10 @@
+
+#probleme de fact :
+
+AA => B
+#A (B | C) => D
+#A !B => C
+
+=B
+
+?A
