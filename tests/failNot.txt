@@ -1,0 +1,12 @@
+
+
+#probleme de not :
+
+#A | !A => B			#ici ok
+#A | B ! => C		#fail
+#A + B => C !		#fail
+A + !(B | C) => D	#ici ok
+
+=A
+
+?C

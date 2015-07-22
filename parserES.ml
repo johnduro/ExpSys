@@ -6,18 +6,18 @@ module Tag = struct type t = Ps | Nt | Fs | Op | Nl end
 let checkList lst =
 	let matchTag value =
 		match value with
-			| LexerES.ParentIn
-			| LexerES.ParentOut -> Tag.Ps
-			| LexerES.Not		-> Tag.Nt
-			| LexerES.Or
-			| LexerES.And
-			| LexerES.Xor
-			| LexerES.Impl
-			| LexerES.Ifoif
-			| LexerES.TrueFacts
-			| LexerES.Requests	-> Tag.Op
-			| LexerES.Fact _	-> Tag.Fs
-			| LexerES.NewLine	-> Tag.Nl
+		| LexerES.ParentIn
+		| LexerES.ParentOut -> Tag.Ps
+		| LexerES.Not		-> Tag.Nt
+		| LexerES.Or
+		| LexerES.And
+		| LexerES.Xor
+		| LexerES.Impl
+		| LexerES.Ifoif
+		| LexerES.TrueFacts
+		| LexerES.Requests	-> Tag.Op
+		| LexerES.Fact _	-> Tag.Fs
+		| LexerES.NewLine _	-> Tag.Nl
 	in
 	let rec loop ls =
 		match ls with
@@ -61,14 +61,15 @@ let checkList lst =
 		| hd::tl								-> loop ls
 	and checkNot ls =
 		match ls with
-		| []															-> raise (invalid_arg "Parsing error : Not (!) at the of file")
-		| hd::tl when (matchTag hd) = Tag.Fs || hd = LexerES.ParentIn	-> loop tl
+		| []															-> raise (invalid_arg "Parsing error : Not (!) at the end of file")
+		(* | hd::tl when (matchTag hd) = Tag.Fs || hd = LexerES.ParentIn	-> loop tl *)
+		| hd::tl when (matchTag hd) = Tag.Fs || hd = LexerES.ParentIn	-> loop ls (* A TESTER *)
 		| hd::tl														-> raise (invalid_arg "Parsing error : Not (!) is not followed by a fact or a parentese") (* orthographe *)
 	and checkFact ls =
 		match ls with
 		| []									-> []
 		| hd::tl when (matchTag hd) = Tag.Op	-> checkOperator tl
-		| hd::tl when hd = LexerES.NewLine		-> loop tl
+		| hd::tl when (matchTag hd) = Tag.Nl	-> loop tl
 		| hd::tl when hd = LexerES.ParentIn		-> raise (invalid_arg "Parsing error : fact followed by a openning parenthese")
 		| hd::tl when (matchTag hd) = Tag.Fs	-> raise (invalid_arg "Parsing error : fact followed by another fact")
 		| hd::tl when hd = LexerES.Not			-> raise (invalid_arg "Parsing error : fact followed by Not (!) operator")
@@ -76,15 +77,14 @@ let checkList lst =
 	and checkFactList ls =
 		match ls with
 		| [] -> []
-		(* | [] -> () *)
 		| hd::tl when (matchTag hd) = Tag.Fs			-> checkFactList tl
-		| hd::tl when hd = LexerES.NewLine				-> loop tl
+		| hd::tl when (matchTag hd) = Tag.Nl			-> loop tl
 		| hd::tl										-> raise (invalid_arg "Parsing error : wrong value after true facts or request")
 	in
 	let finalCheck ls =
 		match ls with
 		| [] -> ()
-		| hd::tl -> LexerES.printMyList ls; raise (invalid_arg "Parsing error : no matching parenthesis for )")
+		| hd::tl -> LexerES.printMyList ls; raise (invalid_arg "Parsing error : no matching parenthesis for )") (* printMyList a supprimer *)
 	in
 	finalCheck (loop lst)
 
