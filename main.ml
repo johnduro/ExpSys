@@ -14,6 +14,7 @@ let main () =
 					print_endline "YOLO"
 				end
 			(* with *)
+			(* | parserES.ParsingExcp err		-> print_endline err *) (* PAS TESTE !!! *)
 			(* | Invalid_argument errS			-> print_endline ("INVALID_ARG : " ^ errS) *)
 			(* | Failure es					-> print_endline es *)
 			(* | e						-> print_endline "Failed to open the stream" *)
