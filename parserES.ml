@@ -9,7 +9,8 @@ let matchTag value =
 	match value with
 	| LexerES.ParentIn
 	| LexerES.ParentOut -> Tag.Ps
-	| LexerES.Not		-> Tag.Nt
+	(* | LexerES.Not		-> Tag.Nt *)
+	| LexerES.Not
 	| LexerES.Or
 	| LexerES.And
 	| LexerES.Xor
@@ -19,6 +20,15 @@ let matchTag value =
 	| LexerES.Requests	-> Tag.Op
 	| LexerES.Fact _	-> Tag.Fs
 	| LexerES.NewLine _	-> Tag.Nl
+
+let opValue value =
+	match value with
+	| LexerES.Not	-> 4
+	| LexerES.And	-> 3
+	| LexerES.Or	-> 2
+	| LexerES.Xor	-> 1
+	| _				-> 0
+
 
 exception ParsingExcp of string
 
@@ -39,11 +49,15 @@ let rec getPosition lst =
 
 module ParsingError =
 	struct
+		let raiseParsingExp s =
+			ParsingExcp s
 		let exp err lst =
 			let position = getPosition lst in
-			ParsingExcp ("Parsing error : " ^ err ^ position)
+			(* ParsingExcp ("Parsing error : " ^ err ^ position) *)
+			raiseParsingExp ("Parsing error : " ^ err ^ position)
 		let expi err line =
-			ParsingExcp ("Parsing error : " ^ err ^ " line " ^ (string_of_int line))
+			(* ParsingExcp ("Parsing error : " ^ err ^ " line " ^ (string_of_int line)) *)
+			raiseParsingExp ("Parsing error : " ^ err ^ " line " ^ (string_of_int line))
 	end
 
 (* ******************************************************************************** *)
@@ -106,12 +120,6 @@ let checkList lst =
 
 (* ********** PARSING ********** *)
 
-(* A + B | C + D + E | F *)
-(* (A + B) | ((C + D) + E) | F *)
-
-(* A | B | C | D | E | F *)
-(* ((((A | B) | C) | D) | E) | F *)
-
 (* (RULES (RULE * NB_LINE)) * (FACTS (TRUE * FALSE)) * QUERIES *)
 
 let parseList tokenList =
@@ -159,8 +167,19 @@ let parseList tokenList =
 		| hd::tl								-> addQueries (tl, line) ret
 	in
 	let parseSingleRule (lst, line) =
-		let rec getExpr ls =
-			(* A FAIRE !!!!!! *)
+		let getExpr ls =
+			(* opValue *)
+			let loopExpr ll stkVal stkOp =
+				match ll with
+				| [] when (List.length stkVal) > 0 	-> List.hd stkVal (* NO NO RESOUDRE LES OPERATIONS RESTANTE *)
+				| []								-> raise(ParsingError.expi "error occured while parsing" line)
+				| hd::tl when hd = LexerES.ParentIn -> loopExpr (* A FAIRE !!!!!!!! *)
+				| hd::tl when (matchTag hd) = Tag.Fs																											-> loopExpr tl ((getFact hd)::stkVal) stkOp
+				| hd::tl when (matchTag hd) = Tag.Op && (((List.lenght stkOp) = 0) || ((List.lenght stkOp) > 0 && (opValue hd) > (opValue (List.hd stkOp))))	-> loopExpr tl stkVal (hd::stkOp)
+				| hd::tl when (matchTag hd) = Tag.Op && (List.lenght stkOp) > 0 && (opValue hd) <= (opValue (List.hd stkOp))									-> loopExpr ll (doOp stkVal (List.hd stkOp)) (List.tl stkOp)
+			in
+			(* CHECK SI RESTE A CAUSE DES PARENTHESES *)
+			loopExpr ls [] []
 		in
 		let rec loop ls tmp =
 			match ls with
@@ -180,6 +199,36 @@ let parseList tokenList =
 	in
 	let rules = getRules tokenList [] [] in
 	parseRules rules ([], ([], []), []) (* LISTE DE RETOUR = (RULES (RULE * NB_LINE)) * (FACTS (TRUE * FALSE)) * QUERIES *)
+
+(* A + B | C + D + E | F *)
+(* (A + B) | ((C + D) + E) | F *)
+
+(* ETAPES : *)
+(* 	2 stacks : 1 operateur, 1 valeur ; quand un operateur a un valeur inferieure ou egale a celui au sommet *)
+(* 	de la stack d'operateur , ce dernier est execute et son resultat est mis au sommet de la stack de valeur *)
+
+(* == A | B | C + D + E | F == *)
+(* A B C D     [*]   A B (C + D) E     [*]    A B ((C + D) + E) F     [*]    (A | (B | (((C + D) + E) | F))) *)
+(* | | +       [*]   | | +             [*]    | | |                   [*] *)
+
+(* A B  [*] (A | B) C D  [*]  (A | B) (C + D) E  [*]  (A | B) ((C + D) + E)   [*]   ((A | B) | ((C + D) + E)) F *)
+(* |    [*] | +          [*]  | +                [*]  |                       [*]   | *)
+
+(* A | B | C + D + E | F *)
+(* (A | B) | ((C + D) + E) | F *)
+
+
+(* == A | B + !C == *)
+(* A B C   [*]  (A | (B + !C)) *)
+(* | + !   [*] *)
+
+
+(* == A | B + !C | D== *)
+(* A B C   [*]  (A | (B + !C)) D   [*]  ((A | (B + !C)) | D) *)
+(* | + !   [*]  |                  [*] *)
+
+(* A | B | C | D | E | F *)
+(* ((((A | B) | C) | D) | E) | F *)
 
 
 let parseExpSys tokenList =
