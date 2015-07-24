@@ -1,5 +1,7 @@
 
 
+(* ********** SERVICES ********** *)
+
 (* Parenthese | Facts | Operateur | NewLine *)
 module Tag = struct type t = Ps | Nt | Fs | Op | Nl end
 
@@ -23,13 +25,16 @@ exception ParsingExcp of string
 
 let getLine nl =
 	match nl with
-	| LexerES.NewLine (line)	-> (string_of_int line)
-	| _							-> "wut!?"
+	(* | LexerES.NewLine (line)	-> (string_of_int line) *)
+	| LexerES.NewLine (line)	-> line
+	(* | _							-> "wut!?" *)
+	| _							-> 0
 
 let rec getPosition lst =
 	match lst with
 	| [] 									-> " the last line"
-	| hd::tl when (matchTag hd) = Tag.Nl	-> (" line " ^ (getLine hd))
+	(* | hd::tl when (matchTag hd) = Tag.Nl	-> (" line " ^ (getLine hd)) *)
+	| hd::tl when (matchTag hd) = Tag.Nl	-> (" line " ^ (string_of_int (getLine hd)))
 	| hd::tl								-> getPosition tl
 
 module ParsingError =
@@ -37,7 +42,13 @@ module ParsingError =
 		let exp err lst =
 			let position = getPosition lst in
 			ParsingExcp ("Parsing error : " ^ err ^ position)
+		let expi err line =
+			ParsingExcp ("Parsing error : " ^ err ^ " line " ^ (string_of_int line))
 	end
+
+(* ******************************************************************************** *)
+
+(* ********** VERIFICATIONS ********** *)
 
 let checkList lst =
 	let rec loop ls =
@@ -91,8 +102,89 @@ let checkList lst =
 	in
 	finalCheck (loop lst)
 
+(* ******************************************************************************** *)
+
+(* ********** PARSING ********** *)
+
+(* A + B | C + D + E | F *)
+(* (A + B) | ((C + D) + E) | F *)
+
+(* A | B | C | D | E | F *)
+(* ((((A | B) | C) | D) | E) | F *)
+
+(* (RULES (RULE * NB_LINE)) * (FACTS (TRUE * FALSE)) * QUERIES *)
+
+let parseList tokenList =
+	let getFact (LexerES.Fact fct) = (ExpSys.Expertsys.Value fct) in
+	let rec getRules lst ret tmp =
+		match lst with
+		| []									-> ret
+		| hd::tl when (matchTag hd) = Tag.Nl	-> getRules tl (ret @ (tmp, getLine hd)) []
+		| hd::tl								-> getRules tl ret (tmp @ hd)
+	in
+	let rec isInitialFacts (lst, line) =
+		match lst with
+		| []									-> false
+		| hd::tl when hd = LexerES.TrueFacts	-> true
+		| hd::tl								-> isInitialFacts (tl, line)
+	in
+	let rec isQueries (lst, line) =
+		match lst with
+		| []									-> false
+		| hd::tl when hd = LexerES.Requests		-> true
+		| hd::tl								-> isQueries (tl, line)
+	in
+	let rec addInitialFacts (lst, line) (retTrue, falseFacts) =
+		(* let addRemoveFacts (LexerES.Fact fc) (tf, ff) = *)
+		let addRemoveFacts newFact (tf, ff) =
+			let rec removeFact nf ff ret =
+				match ff with
+				| []					-> ret
+				| hd::tl when hd = nf	-> removeFact nf tl ret
+				| hd::tl				-> removeFact nf tl (ret @ hd)
+			in
+			(* let newFact = (ExpSys.Expertsys.Value fc) in *)
+			((tf @ newFact), (removeFact newFact ff []))
+		in
+		match lst with
+		| []									-> (retTrue, falseFacts)
+		(* | hd::tl when (matchTag hd) = Tag.Fs	-> addInitialFacts (tl, line) (addRemoveFacts hd (retTrue, falseFacts)) *)
+		| hd::tl when (matchTag hd) = Tag.Fs	-> addInitialFacts (tl, line) (addRemoveFacts (getFact hd) (retTrue, falseFacts))
+		| hd::tl								-> addInitialFacts (tl, line) (retTrue, falseFacts)
+	in
+	let rec addQueries (lst, line) ret =
+		match lst with
+		| []									-> ret
+		| hd::tl when (matchTag hd) = Tag.Fs	-> addQueries (tl, line) (ret @ (getFact hd))
+		| hd::tl								-> addQueries (tl, line) ret
+	in
+	let parseSingleRule (lst, line) =
+		let rec getExpr ls =
+			(* A FAIRE !!!!!! *)
+		in
+		let rec loop ls tmp =
+			match ls with
+			| []	-> raise (ParsingError.expi "statement with no effect (no '=>' or '<=>')" line)
+			| hd::tl when hd = LexerES.Impl		-> (ExpSys.Expertsys.Impl ((getExpr tmp), (getExpr tl)), line)
+			(* | hd::tl when hd = LexerES.Ifoif	-> (ExpSys.Expertsys.Ifoif ((getExpr tmp), (getExpr tl)), line) *)
+			| hd::tl							-> loop tl (tmp @ hd)
+		in
+		loop lst []
+	in
+	let rec parseRules rulez (parsedRules, (trueFacts, falseFacts), queries) =
+		match rulez with
+		| []								-> ret
+		| hd::tl when (isInitialFacts hd)	-> parseRules tl (parsedRules, (addInitialFacts hd ([], falseFacts)), queries)
+		| hd::tl when (isQueries hd)		-> parseRules tl (parsedRules, (trueFacts, falseFacts), (addQueries hd []))
+		| hd::tl							-> parseRules tl ((parsedRules @ (parseSingleRule hd)), (trueFacts, falseFacts), queries)
+	in
+	let rules = getRules tokenList [] [] in
+	parseRules rules ([], ([], []), []) (* LISTE DE RETOUR = (RULES (RULE * NB_LINE)) * (FACTS (TRUE * FALSE)) * QUERIES *)
 
 
 let parseExpSys tokenList =
 	checkList tokenList;
+	let parsedlist = parseList tokenList in
+	(* checkParsing parsedList; *)
+	(* parsedList *)
 	print_endline "WUT ?!"
