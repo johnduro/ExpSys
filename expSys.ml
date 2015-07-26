@@ -48,6 +48,15 @@ module Expertsys : (ExpertsysSig with type t = char) =
 		(* 	| Value v -> print_endline ((Char.escaped v) ^ " is now true") *)
 		(* 	| _ -> print_endline "yolo" *)
 		(* let rec eval e = *)
+		let rec stringOfExpr e =
+			match e with
+			| Not (exp) -> ("( NOT " ^ (stringOfExpr exp) ^ ")")
+			| And (e1, e2) -> ("( " ^ (stringOfExpr e1) ^ " AND " ^ (stringOfExpr e2) ^ " )")
+			| Or (e1, e2) -> ("( " ^ (stringOfExpr e1) ^ " OR " ^ (stringOfExpr e2) ^ " )")
+			| Xor (e1, e2) -> ("( " ^ (stringOfExpr e1) ^ " XOR " ^ (stringOfExpr e2) ^ " )")
+			| Value v -> Char.escaped v
+			(* | _ -> "wut?" *)
+
 		let addToTrueFacts (Facts (trueFacts, falseFacts)) exp =
 			Facts (trueFacts @ [exp], falseFacts)
 
@@ -95,15 +104,15 @@ module Expertsys : (ExpertsysSig with type t = char) =
 			(* | Value v -> (getBoolValue v) *)
 
 		let printFacts (Facts (trueFacts, falseFacts)) =
-			let rec stringOfExpr e =
-				match e with
-				| Not (exp) -> ("( NOT " ^ (stringOfExpr exp) ^ ")")
-				| And (e1, e2) -> ("( " ^ (stringOfExpr e1) ^ " AND " ^ (stringOfExpr e2) ^ " )")
-				| Or (e1, e2) -> ("( " ^ (stringOfExpr e1) ^ " OR " ^ (stringOfExpr e2) ^ " )")
-				| Xor (e1, e2) -> ("( " ^ (stringOfExpr e1) ^ " XOR " ^ (stringOfExpr e2) ^ " )")
-				| Value v -> Char.escaped v
-				(* | _ -> "wut?" *)
-			in
+			(* let rec stringOfExpr e = *)
+			(* 	match e with *)
+			(* 	| Not (exp) -> ("( NOT " ^ (stringOfExpr exp) ^ ")") *)
+			(* 	| And (e1, e2) -> ("( " ^ (stringOfExpr e1) ^ " AND " ^ (stringOfExpr e2) ^ " )") *)
+			(* 	| Or (e1, e2) -> ("( " ^ (stringOfExpr e1) ^ " OR " ^ (stringOfExpr e2) ^ " )") *)
+			(* 	| Xor (e1, e2) -> ("( " ^ (stringOfExpr e1) ^ " XOR " ^ (stringOfExpr e2) ^ " )") *)
+			(* 	| Value v -> Char.escaped v *)
+			(* 	(\* | _ -> "wut?" *\) *)
+			(* in *)
 			let rec loop lst boolVal =
 				match lst with
 				| [] -> print_char '\n'
