@@ -25,6 +25,7 @@ module type ExpertsysSig =
 		val evalBool : expr -> fact -> bool
 		val eval : rule -> fact -> fact (* ? *)
 		val printFacts : fact -> unit
+		val stringOfExpr : expr -> string
 		(* val eval : expr -> fact -> fact (\* ? *\) *)
 	end
 
@@ -124,48 +125,48 @@ module Expertsys : (ExpertsysSig with type t = char) =
 	end
 
 
-let main () =
-	(* A | B => E *)
-	(* =AC *)
-	print_endline "A | B => E";
-	print_endline "with facts =AC";
-	let factz = Expertsys.Facts ([(Expertsys.Value 'A'); (Expertsys.Value 'C')], []) in
-	let exp1 = Expertsys.Impl (Expertsys.Or (Expertsys.Value 'A', Expertsys.Value 'B'), Expertsys.Value 'E') in
-	print_endline "BEFORE :";
-	Expertsys.printFacts factz;
-	let result = Expertsys.eval exp1 factz in
-	print_endline "RESULT :";
-	Expertsys.printFacts result;
-	(* =============================================================== *)
-	(* A + B = A + B *)
-	(* A + B = A | B *)
-	let expt1 = Expertsys.And (Expertsys.Value 'A', Expertsys.Value 'B') in
-	let expt2 = Expertsys.And (Expertsys.Value 'A', Expertsys.Value 'B') in
-	let expt3 = Expertsys.Or (Expertsys.Value 'A', Expertsys.Value 'B') in
-	print_endline "test A + B = A + B";
-	print_endline ("result : " ^ (string_of_bool (expt1 = expt2)));
-	print_endline "test A + B = A | B";
-	print_endline ("result : " ^ (string_of_bool (expt1 = expt3)));
-	print_char '\n';
-	(* =============================================================== *)
-	(* A | B + C => E *)
-	(* (F | G) + H => E *)
-	(* With =AC, E should be FALSE ===> non TRUE *)
-	print_endline "A | B + C => E";
-	print_endline "(F | G) + H => E";
-	print_endline "with facts =AC";
-	let exp2 = Expertsys.Impl (Expertsys.Or (Expertsys.Value 'A', (Expertsys.And (Expertsys.Value 'B', Expertsys.Value 'C'))), Expertsys.Value 'E') in
-	let exp3 = Expertsys.Impl (Expertsys.And ((Expertsys.Or (Expertsys.Value 'F', Expertsys.Value 'G')), Expertsys.Value 'C'), Expertsys.Value 'E') in
-	print_endline "BEFORE :";
-	Expertsys.printFacts factz;
-	let result2 = Expertsys.eval exp2 factz in
-	print_endline "RESULT :";
-	Expertsys.printFacts result2;
-	let result3 = Expertsys.eval exp3 result2 in
-	print_endline "RESULT :";
-	Expertsys.printFacts result3
+(* let main () = *)
+(* 	(\* A | B => E *\) *)
+(* 	(\* =AC *\) *)
+(* 	print_endline "A | B => E"; *)
+(* 	print_endline "with facts =AC"; *)
+(* 	let factz = Expertsys.Facts ([(Expertsys.Value 'A'); (Expertsys.Value 'C')], []) in *)
+(* 	let exp1 = Expertsys.Impl (Expertsys.Or (Expertsys.Value 'A', Expertsys.Value 'B'), Expertsys.Value 'E') in *)
+(* 	print_endline "BEFORE :"; *)
+(* 	Expertsys.printFacts factz; *)
+(* 	let result = Expertsys.eval exp1 factz in *)
+(* 	print_endline "RESULT :"; *)
+(* 	Expertsys.printFacts result; *)
+(* 	(\* =============================================================== *\) *)
+(* 	(\* A + B = A + B *\) *)
+(* 	(\* A + B = A | B *\) *)
+(* 	let expt1 = Expertsys.And (Expertsys.Value 'A', Expertsys.Value 'B') in *)
+(* 	let expt2 = Expertsys.And (Expertsys.Value 'A', Expertsys.Value 'B') in *)
+(* 	let expt3 = Expertsys.Or (Expertsys.Value 'A', Expertsys.Value 'B') in *)
+(* 	print_endline "test A + B = A + B"; *)
+(* 	print_endline ("result : " ^ (string_of_bool (expt1 = expt2))); *)
+(* 	print_endline "test A + B = A | B"; *)
+(* 	print_endline ("result : " ^ (string_of_bool (expt1 = expt3))); *)
+(* 	print_char '\n'; *)
+(* 	(\* =============================================================== *\) *)
+(* 	(\* A | B + C => E *\) *)
+(* 	(\* (F | G) + H => E *\) *)
+(* 	(\* With =AC, E should be FALSE ===> non TRUE *\) *)
+(* 	print_endline "A | B + C => E"; *)
+(* 	print_endline "(F | G) + H => E"; *)
+(* 	print_endline "with facts =AC"; *)
+(* 	let exp2 = Expertsys.Impl (Expertsys.Or (Expertsys.Value 'A', (Expertsys.And (Expertsys.Value 'B', Expertsys.Value 'C'))), Expertsys.Value 'E') in *)
+(* 	let exp3 = Expertsys.Impl (Expertsys.And ((Expertsys.Or (Expertsys.Value 'F', Expertsys.Value 'G')), Expertsys.Value 'C'), Expertsys.Value 'E') in *)
+(* 	print_endline "BEFORE :"; *)
+(* 	Expertsys.printFacts factz; *)
+(* 	let result2 = Expertsys.eval exp2 factz in *)
+(* 	print_endline "RESULT :"; *)
+(* 	Expertsys.printFacts result2; *)
+(* 	let result3 = Expertsys.eval exp3 result2 in *)
+(* 	print_endline "RESULT :"; *)
+(* 	Expertsys.printFacts result3 *)
 
-let () = main ()
+(* let () = main () *)
 
 
 

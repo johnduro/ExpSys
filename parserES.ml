@@ -83,11 +83,11 @@ let checkList lst =
 		| hd::tl								-> checkParenthesis (loop tl) endLst
 	and checkOperator ls =
 		match ls with
-		| []									-> raise (ParsingError.exp "operator at the end of line in" [])
-		| hd::tl when (matchTag hd) = Tag.Op	-> raise (ParsingError.exp "operator following another" tl)
-		| hd::tl when (matchTag hd) = Tag.Nl	-> raise (ParsingError.exp "operator alone at the end of" tl)
-		| hd::tl when hd = LexerES.ParentOut	-> raise (ParsingError.exp "operator alone at the end of parenthesis" tl)
-		| hd::tl								-> loop ls
+		| []														-> raise (ParsingError.exp "operator at the end of line in" [])
+		| hd::tl when (matchTag hd) = Tag.Op && hd != LexerES.Not	-> raise (ParsingError.exp "operator following another" tl)
+		| hd::tl when (matchTag hd) = Tag.Nl						-> raise (ParsingError.exp "operator alone at the end of" tl)
+		| hd::tl when hd = LexerES.ParentOut						-> raise (ParsingError.exp "operator alone at the end of parenthesis" tl)
+		| hd::tl													-> loop ls
 	and checkNot ls =
 		match ls with
 		| []															-> raise (ParsingError.exp "Not (!) with no expression following in" [])
@@ -233,19 +233,38 @@ let parseList tokenList =
 		in
 		loop lst []
 	in
-	let rec parseRules rulez (parsedRules, (trueFacts, falseFacts), queries) =
+	(* let rec parseRules rulez (parsedRules, (trueFacts, falseFacts), queries) = *)
+	let rec parseRules rulez (parsedRules, (ExpSys.Expertsys.Facts (trueFacts, falseFacts)), queries) =
 		match rulez with
 		(* | []								-> ret *)
-		| []								-> (parsedRules, (trueFacts, falseFacts), queries)
-		| hd::tl when (isInitialFacts hd)	-> parseRules tl (parsedRules, (addInitialFacts hd ([], falseFacts)), queries)
-		| hd::tl when (isQueries hd)		-> parseRules tl (parsedRules, (trueFacts, falseFacts), (addQueries hd []))
-		| hd::tl							-> parseRules tl ((parsedRules @ [(parseSingleRule hd)]), (trueFacts, falseFacts), queries)
+		| []								-> (parsedRules, (ExpSys.Expertsys.Facts (trueFacts, falseFacts)), queries)
+		| hd::tl when (isInitialFacts hd)	-> parseRules tl (parsedRules, (ExpSys.Expertsys.Facts (addInitialFacts hd ([], falseFacts))), queries)
+		| hd::tl when (isQueries hd)		-> parseRules tl (parsedRules, (ExpSys.Expertsys.Facts (trueFacts, falseFacts)), (addQueries hd []))
+		| hd::tl							-> parseRules tl ((parsedRules @ [(parseSingleRule hd)]), (ExpSys.Expertsys.Facts (trueFacts, falseFacts)), queries)
 		(* | hd::tl							-> parseRules tl ((parsedRules::(parseSingleRule hd)), (trueFacts, falseFacts), queries) *)
+	in
+	let addFalseFacts (parsedRules, (ExpSys.Expertsys.Facts (trueFacts, falseFacts)), queries) =
+		let rec loop pRules ret =
+			(* let addFF e1 e2 = *)
+			(* 	let newRret  *)
+			(* in *)
+			match pRules with
+			| [] -> ret
+			| hd::tl ->
+				begin
+					(* A FAIRE !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! *)
+					match hd with
+					| ExpSys.Expertsys.Impl (e1, e2)  -> loop tl (ret @ (addFF e1 e2))
+					(* | rul when rul = LexerES.Ifoif -> *)
+				end
+		in
+		let fFacts = loop parsedRules [] in
+		(* RETURN *)
 	in
 	let rules = getRules tokenList [] [] in
 	(* rajouter le constructeur fact ici ? *)
-	parseRules rules ([], ([], []), []) (* LISTE DE RETOUR = (RULES (RULE * NB_LINE)) * (FACTS (TRUE * FALSE)) * QUERIES *)
-
+	let pRules = parseRules rules ([], (ExpSys.Expertsys.Facts ([], [])), []) in(* LISTE DE RETOUR = (RULES (RULE * NB_LINE)) * (FACTS (TRUE * FALSE)) * QUERIES *)
+	addFalseFact pRules
 
 let printPL (parsedRules, facts, queries) =
 	let printParsedRules (expr, line) =
@@ -253,21 +272,27 @@ let printPL (parsedRules, facts, queries) =
 			match exp with
 			| ExpSys.Expertsys.Impl (e1, e2) -> ((ExpSys.Expertsys.stringOfExpr e1) ^ " => " ^ (ExpSys.Expertsys.stringOfExpr e2))
 			(* | ExpSys.Expertsys.Ifoif (e1, e2) -> ((ExpSys.Expertsys.stringOfExpr e1) ^ " <=> " ^ (ExpSys.Expertsys.stringOfExpr e2)) *)
-			| _ -> ("failed to print rule line " ^ (string_of_int line))
+			(* | _ -> ("failed to print rule line " ^ (string_of_int line)) *)
 		in
 		print_endline ("Rule line " ^ (string_of_int line));
 		print_endline (stringOfRule expr)
 	in
+	let rec loopPR ll =
+		match ll with
+		| [] -> ()
+		| hd::tl -> printParsedRules hd; loopPR tl
+	in
 	let rec printQueries qr =
 		match qr with
-		| []		-> ()
-		| hd::tl	-> print_string ((ExpSys.Expertsys.stringOfExpr hd) ^ " ")
+		| []		-> print_char '\n'
+		| hd::tl	-> print_string ((ExpSys.Expertsys.stringOfExpr hd) ^ " "); printQueries tl
 		(* match qr with *)
 		(* | ExpSys.Expertsys.Value v -> Char *)
 	in
-	print_endline "**************"
+	print_endline "**************";
 	print_endline "PARSED RULES :";
-	printParsedRules parsedRules;
+	(* printParsedRules parsedRules; *)
+	loopPR parsedRules;
 	print_endline "*****";
 	print_endline "FACTS";
 	ExpSys.Expertsys.printFacts facts;
