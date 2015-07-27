@@ -51,7 +51,7 @@ module Expertsys : (ExpertsysSig with type t = char) =
 		(* let rec eval e = *)
 		let rec stringOfExpr e =
 			match e with
-			| Not (exp) -> ("( NOT " ^ (stringOfExpr exp) ^ ")")
+			| Not (exp) -> ("( NOT " ^ (stringOfExpr exp) ^ " )")
 			| And (e1, e2) -> ("( " ^ (stringOfExpr e1) ^ " AND " ^ (stringOfExpr e2) ^ " )")
 			| Or (e1, e2) -> ("( " ^ (stringOfExpr e1) ^ " OR " ^ (stringOfExpr e2) ^ " )")
 			| Xor (e1, e2) -> ("( " ^ (stringOfExpr e1) ^ " XOR " ^ (stringOfExpr e2) ^ " )")

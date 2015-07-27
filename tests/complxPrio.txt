@@ -1,0 +1,15 @@
+
+
+A + B | C + D + E | F => G
+
+A | B | C + D + E | F => T
+
+A | B + !C => X
+
+A | B + !C | D => Y
+
+A | B | C | D | E | F => Z
+
+=ABG
+
+?GTXYZ
