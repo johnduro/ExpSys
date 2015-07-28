@@ -52,12 +52,28 @@ module ParsingError =
 			raiseParsingExp ("Parsing error : " ^ err ^ position)
 		let expi err line =
 			raiseParsingExp ("Parsing error : " ^ err ^ " line " ^ (string_of_int line))
+		let expr err (r1, l1) (r2, l2) =
+			raiseParsingExp ("Parsing error : " ^ err ^ " between line " ^ (string_of_int l1) ^ " and line " ^ (string_of_int l2))
 	end
 
 let getFact f1 =
 	match f1 with
 	| LexerES.Fact fct -> ExpSys.Expertsys.Value fct
 	| _ -> raise (ParsingError.expi "getFact failed" 0)
+
+let rec extractFacts e =
+	match e with
+	| ExpSys.Expertsys.Not (exp)		-> extractFacts exp
+	| ExpSys.Expertsys.And (e1, e2)		-> (extractFacts e1) @ (extractFacts e2)
+	| ExpSys.Expertsys.Or (e1, e2)		-> (extractFacts e1) @ (extractFacts e2)
+	| ExpSys.Expertsys.Xor (e1, e2)		-> (extractFacts e1) @ (extractFacts e2)
+	| ExpSys.Expertsys.Value v			-> [ExpSys.Expertsys.Value v]
+
+let rec notIn el lst =
+	match lst with
+	| []					-> true
+	| hd::tl when hd = el	-> false
+	| hd::tl				-> notIn el tl
 
 (* ******************************************************************************** *)
 
@@ -114,6 +130,41 @@ let checkList lst =
 		| hd::tl 	-> raise (ParsingError.exp "no matching parenthesis for )" tl)
 	in
 	finalCheck (loop lst)
+
+let checkParsing (parsedRules, facts, queries) =
+	let rec isSameFactList f1 f2 =
+		match f1 with
+		| [] -> true
+		| hd::tl when (notIn hd f2) -> false
+		| hd::tl -> isSameFactList tl f2
+	in
+	let getLeftExpr (rl, line) =
+		match rl with
+		| ExpSys.Expertsys.Impl (e1, e2) -> e1
+		(* | ExpSys.Expertsys.Ifoif (e1, e2) -> e1 *)
+	in
+	let getRightFacts (rl, line) =
+		match rl with
+		| ExpSys.Expertsys.Impl (e1, e2) -> extractFacts e2
+		(* | ExpSys.Expertsys.Ifoif (e1, e2) -> extractFacts e2 *)
+	in
+	let checkRule rule lst =
+		let leftExpr = getLeftExpr rule in
+		let rightsFacts = getRightFacts rule in
+		let rec loop ls =
+			match ls with
+			| [] -> ()
+			| hd::tl when leftExpr = (getLeftExpr hd) && (isSameFactList rightsFacts (getRightFacts hd)) -> raise (ParsingError.expr "conflict, two rules have the same left expression and it impact the same facts" rule hd)
+			| hd::tl -> loop tl
+		in
+		loop lst
+	in
+	let rec loopRules rules =
+		match rules with
+		| [] -> ()
+		| hd::tl -> checkRule hd tl; loopRules tl
+	in
+	loopRules parsedRules
 
 (* ******************************************************************************** *)
 
@@ -181,21 +232,7 @@ let parseSingleRule (lst, line) =
 
 (* PARCOURS LES RULES ET AJOUTES TOUS LES FAIT A UNE LISTE DE FALSE FACTS *)
 let addFalseFacts (parsedRules, (ExpSys.Expertsys.Facts (trueFacts, falseFacts)), queries) =
-	let rec extractFacts e =
-		match e with
-		| ExpSys.Expertsys.Not (exp)		-> extractFacts exp
-		| ExpSys.Expertsys.And (e1, e2)		-> (extractFacts e1) @ (extractFacts e2)
-		| ExpSys.Expertsys.Or (e1, e2)		-> (extractFacts e1) @ (extractFacts e2)
-		| ExpSys.Expertsys.Xor (e1, e2)		-> (extractFacts e1) @ (extractFacts e2)
-		| ExpSys.Expertsys.Value v			-> [ExpSys.Expertsys.Value v]
-	in
 	let addFF e1 e2 ff =
-		let rec notIn el lst =
-			match lst with
-			| []					-> true
-			| hd::tl when hd = el	-> false
-			| hd::tl				-> notIn el tl
-		in
 		let rec loop lst ret =
 			match lst with
 			| []													-> ret
@@ -325,6 +362,6 @@ let parseExpSys tokenList =
 	checkList tokenList;
 	let parsedlist = parseList tokenList in  (* LISTE DE RETOUR = (RULES (RULE * NB_LINE)) * (FACTS (TRUE * FALSE)) * QUERIES *)
 	printPL parsedlist;
-	(* checkParsing parsedList; *)
-	(* parsedList *)
+	checkParsing parsedlist;
+	(* parsedlist *)
 	print_endline "WUT ?!"
