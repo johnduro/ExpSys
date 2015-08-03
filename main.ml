@@ -10,7 +10,8 @@ let main () =
 					let cin = open_in Sys.argv.(1) in
 					let lst = LexerES.lexExpSys cin true in
 					(* ignore (lst); *)
-					ParserES.parseExpSys lst;
+					let prs = ParserES.parseExpSys lst in
+					ExpSys.executeExpSys prs;
 					print_endline "YOLO"
 				end
 			(* with *)

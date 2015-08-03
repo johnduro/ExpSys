@@ -52,7 +52,7 @@ module ParsingError =
 			raiseParsingExp ("Parsing error : " ^ err ^ position)
 		let expi err line =
 			raiseParsingExp ("Parsing error : " ^ err ^ " line " ^ (string_of_int line))
-		let expr err (r1, l1) (r2, l2) =
+		let expr err (r1, l1, s1) (r2, l2, s2) =
 			raiseParsingExp ("Parsing error : " ^ err ^ " between line " ^ (string_of_int l1) ^ " and line " ^ (string_of_int l2))
 	end
 
@@ -69,11 +69,36 @@ let rec extractFacts e =
 	| ExpSys.Expertsys.Xor (e1, e2)		-> (extractFacts e1) @ (extractFacts e2)
 	| ExpSys.Expertsys.Value v			-> [ExpSys.Expertsys.Value v]
 
-let rec notIn el lst =
-	match lst with
-	| []					-> true
-	| hd::tl when hd = el	-> false
-	| hd::tl				-> notIn el tl
+(* let rec notIn el lst = *)
+(* 	match lst with *)
+(* 	| []					-> true *)
+(* 	| hd::tl when hd = el	-> false *)
+(* 	| hd::tl				-> notIn el tl *)
+
+let tokensToString lst =
+	let tokenToChar tk add =
+		match tk with
+		| LexerES.ParentIn	-> "("
+		| LexerES.ParentOut -> ")" ^ add
+		| LexerES.Not		-> "!"
+		| LexerES.Or		-> "|" ^ add
+		| LexerES.And		-> "+" ^ add
+		| LexerES.Xor		-> "^" ^ add
+		| LexerES.Impl		-> "=>" ^ add
+		| LexerES.Ifoif		-> "<=>" ^ add
+		(* | LexerES.TrueFacts	->  *)
+		(* | LexerES.Requests	-> Tag.Op *)
+		| LexerES.Fact ff	-> (Char.escaped ff) ^ add
+		| _					-> "wut?!"
+		(* | LexerES.NewLine _	-> Tag.Nl *)
+	in
+	let rec loop ls ret =
+		match ls with
+		| [] -> ret
+		| hd::[] -> loop [] (ret ^ (tokenToChar hd ""))
+		| hd::tl -> loop tl (ret ^ (tokenToChar hd " "))
+	in
+	loop lst ""
 
 (* ******************************************************************************** *)
 
@@ -135,15 +160,16 @@ let checkParsing (parsedRules, facts, queries) =
 	let rec isSameFactList f1 f2 =
 		match f1 with
 		| [] -> true
-		| hd::tl when (notIn hd f2) -> false
+		(* | hd::tl when (notIn hd f2) -> false *)
+		| hd::tl when (Utils.notIn hd f2) -> false
 		| hd::tl -> isSameFactList tl f2
 	in
-	let getLeftExpr (rl, line) =
+	let getLeftExpr (rl, line, str) =
 		match rl with
 		| ExpSys.Expertsys.Impl (e1, e2) -> e1
 		(* | ExpSys.Expertsys.Ifoif (e1, e2) -> e1 *)
 	in
-	let getRightFacts (rl, line) =
+	let getRightFacts (rl, line, str) =
 		match rl with
 		| ExpSys.Expertsys.Impl (e1, e2) -> extractFacts e2
 		(* | ExpSys.Expertsys.Ifoif (e1, e2) -> extractFacts e2 *)
@@ -219,14 +245,17 @@ let parseSingleRule (lst, line) =
 		(* CHECK SI RESTE A CAUSE DES PARENTHESES >> RENVOYER UN TUPLE AVEC LE RESTE DE LA LISTE ??*)
 		loopExpr ls [] []
 	in
-	let rec loop ls tmp =
+	let rec loop ls tmp rest =
 		match ls with
 		| []	-> raise (ParsingError.expi "statement with no effect (no '=>' or '<=>')" line)
-		| hd::tl when hd = LexerES.Impl		-> (ExpSys.Expertsys.Impl ((getExpr tmp), (getExpr tl)), line)
-		(* | hd::tl when hd = LexerES.Ifoif	-> (ExpSys.Expertsys.Ifoif ((getExpr tmp), (getExpr tl)), line) *)
-		| hd::tl							-> loop tl (tmp @ [hd])
+		(* | hd::tl when hd = LexerES.Impl		-> (ExpSys.Expertsys.Impl ((getExpr tmp), (getExpr tl)), line) *)
+		| hd::tl when hd = LexerES.Impl		-> (ExpSys.Expertsys.Impl ((getExpr tmp), (getExpr tl)), line, (tokensToString rest))
+		(* | hd::tl when hd = LexerES.Ifoif	-> (ExpSys.Expertsys.Ifoif ((getExpr tmp), (getExpr tl)), line, (tokensToString rest)) *)
+		| hd::tl							-> loop tl (tmp @ [hd]) rest
+		(* | hd::tl							-> loop tl (tmp @ [hd]) *)
 	in
-	loop lst []
+	(* loop lst [] *)
+	loop lst [] lst
 
 
 
@@ -236,7 +265,8 @@ let addFalseFacts (parsedRules, (ExpSys.Expertsys.Facts (trueFacts, falseFacts))
 		let rec loop lst ret =
 			match lst with
 			| []													-> ret
-			| hd::tl when (notIn hd trueFacts) && (notIn hd ret)	-> loop tl (ret @ [hd])
+			(* | hd::tl when (notIn hd trueFacts) && (notIn hd ret)	-> loop tl (ret @ [hd]) *)
+			| hd::tl when (Utils.notIn hd trueFacts) && (Utils.notIn hd ret)	-> loop tl (ret @ [hd])
 			| hd::tl												-> loop tl ret
 		in
 		let e1Fact = extractFacts e1 in
@@ -248,7 +278,7 @@ let addFalseFacts (parsedRules, (ExpSys.Expertsys.Facts (trueFacts, falseFacts))
 	let rec loop pRules ret =
 		match pRules with
 		| [] -> ret
-		| (hd, line)::tl ->
+		| (hd, line, str)::tl ->
 			begin
 				match hd with
 				| ExpSys.Expertsys.Impl (e1, e2)  -> loop tl (addFF e1 e2 ret)
@@ -295,14 +325,15 @@ let parseList tokenList =
 
 (* PRINT LE RESULTAT DU PARSING *)
 let printPL (parsedRules, facts, queries) =
-	let printParsedRules (expr, line) =
+	(* let printParsedRules (expr, line) = *)
+	let printParsedRules (expr, line, str) =
 		let stringOfRule exp =
 			match exp with
 			| ExpSys.Expertsys.Impl (e1, e2) -> ((ExpSys.Expertsys.stringOfExpr e1) ^ " => " ^ (ExpSys.Expertsys.stringOfExpr e2))
 			(* | ExpSys.Expertsys.Ifoif (e1, e2) -> ((ExpSys.Expertsys.stringOfExpr e1) ^ " <=> " ^ (ExpSys.Expertsys.stringOfExpr e2)) *)
 			(* | _ -> ("failed to print rule line " ^ (string_of_int line)) *)
 		in
-		print_endline ("Rule line " ^ (string_of_int line));
+		print_endline ("Rule line " ^ (string_of_int line) ^ " {" ^ str ^ "} ");
 		print_endline (stringOfRule expr)
 	in
 	let rec loopPR ll =
@@ -360,8 +391,8 @@ let printPL (parsedRules, facts, queries) =
 
 let parseExpSys tokenList =
 	checkList tokenList;
-	let parsedlist = parseList tokenList in  (* LISTE DE RETOUR = (RULES (RULE * NB_LINE)) * (FACTS (TRUE * FALSE)) * QUERIES *)
+	let parsedlist = parseList tokenList in  (* LISTE DE RETOUR = (RULES (RULE * NB_LINE * ORIGINAL_STR)) * (FACTS (TRUE * FALSE)) * QUERIES *)
 	printPL parsedlist;
 	checkParsing parsedlist;
-	(* parsedlist *)
-	print_endline "WUT ?!"
+	parsedlist
+	(* print_endline "WUT ?!" *)
