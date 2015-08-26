@@ -94,8 +94,33 @@ module Expertsys : (ExpertsysSig with type t = char) =
 
 
 (* ************************************************************************* *)
+	(* A + B => !(C + D) *)
 
-		let addToTrueFacts (Facts (trueFacts, falseFacts)) exp =
+		(* let addToTrueFacts (Facts (trueFacts, falseFacts)) exp = *)
+		let addExprToFacts (Facts (trueFacts, falseFacts)) exp =
+			let mergeFacts (tf1, ff1) (tf2, ff2) =
+				let rec looping l1 l2 =
+					match l2 with
+					| []								-> l1
+					| hd::tl when (Utils.notIn hd l1)	-> looping (l1 @ [hd]) tl
+					| hd::tl							-> looping l1 tl
+				in
+				((looping tf1 tf2), (looping ff1 ff2))
+			in
+			let rec exprToFact (tf, ff) ex bol =
+				match exp with
+				| Not (e)					-> exprToFact (tf, ff) e (not bol)
+				| And (e1, e2)				-> mergeFacts (exprToFact (tf, ff) e1 bol) (exprToFact (tf, ff) e2 bol)
+				| Value v when bol 			-> ((tf @ [v]), ff)
+				| Value v when not bol 		-> (tf, (ff @ [v]))
+			in
+			exprToFact trueFacts falseFacts exp true (* LA JE RECUPERE UNE LISTE DE FAITS *)
+			exprToFact ([], []) exp true (* ?????????? meilleure solution *)
+			(* merge les nouvelles listes avec les anciennes en supprimant d'abords les ff dans les tf
+			et inversement, ensuite verifier si il n'y a pas de conflits *)
+
+
+
 			if (Utils.notIn exp trueFacts) then
 				Facts (trueFacts @ [exp], (removeFact falseFacts exp))
 			else
@@ -171,6 +196,20 @@ module Expertsys : (ExpertsysSig with type t = char) =
 
 (* LISTE DE RETOUR = (RULES (RULE * NB_LINE * ORIGINAL_STR)) * (FACTS (TRUE * FALSE)) * QUERIES *)
 let executeExpSys (rules, facts, queries) =
+	let checkQueries ff qr =
+	(* A FAIRE  *)
+	in
+	let startEval (rule, nbLine, ogStr) factz =
+		print_endline ("Evaluating rule line " ^ (string_of_int nbLine) ^ " : " ^ ogStr);
+		Expertsys.eval rule factz
+	in
+	let rec loop rulez factz =
+		match rulez with
+		| [] -> factz
+		| hd::tl -> loop tl (startEval hd factz)
+	in
+	let finalFacts = loop rules facts in
+	checkQueries finalFacts queries
 
 (* let main () = *)
 (* 	(\* A | B => E *\) *)
