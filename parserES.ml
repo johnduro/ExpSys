@@ -333,7 +333,7 @@ let printPL (parsedRules, facts, queries) =
 			(* | ExpSys.Expertsys.Ifoif (e1, e2) -> ((ExpSys.Expertsys.stringOfExpr e1) ^ " <=> " ^ (ExpSys.Expertsys.stringOfExpr e2)) *)
 			(* | _ -> ("failed to print rule line " ^ (string_of_int line)) *)
 		in
-		print_endline ("Rule line " ^ (string_of_int line) ^ " {" ^ str ^ "} ");
+		print_endline ("Rule line " ^ (string_of_int line) ^ " { " ^ str ^ " } ");
 		print_endline (stringOfRule expr)
 	in
 	let rec loopPR ll =

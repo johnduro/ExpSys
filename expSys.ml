@@ -6,6 +6,15 @@
 	(* => which means "implies". Example : A + B => C *)
 	(* <=> which means "if and only if". Example : A + B <=> C *)
 
+exception EvalExcp of string
+
+module EvalError =
+	struct
+		let raiseEvalExcp s =
+			EvalExcp s
+		let noOp (nbLine, ogStr) =
+			raiseEvalExcp ("Evaluation error : can't evaluate rule line " ^ (string_of_int nbLine) ^ ", an operator is not supported : " ^ ogStr)
+	end
 
 module type ExpertsysSig =
 	sig
@@ -19,11 +28,13 @@ module type ExpertsysSig =
 		type fact = Facts of (expr list * expr list) (* (TRUE * FALSE) *)
 		(* type eval : expr -> t *)
 		(* val eval : expr -> bool (\* ? *\) *)
-		val addToTrueFacts : fact -> expr -> fact
+		val addExprToFacts : fact -> expr -> (int * string) -> fact (* ????? *)
+		(* val addToTrueFacts : fact -> expr -> fact *)
 		(* val getBoolValue : t -> fact -> bool *)
 		val getBoolValue : expr -> fact -> bool
 		val evalBool : expr -> fact -> bool
-		val eval : rule -> fact -> fact (* ? *)
+		(* val eval : rule -> fact -> fact (\* ? *\) *)
+		val eval : rule -> fact -> (int * string) -> fact (* ? *)
 		val printFacts : fact -> unit
 		val stringOfExpr : expr -> string
 		(* val eval : expr -> fact -> fact (\* ? *\) *)
@@ -97,7 +108,19 @@ module Expertsys : (ExpertsysSig with type t = char) =
 	(* A + B => !(C + D) *)
 
 		(* let addToTrueFacts (Facts (trueFacts, falseFacts)) exp = *)
-		let addExprToFacts (Facts (trueFacts, falseFacts)) exp =
+		let addExprToFacts (Facts (trueFacts, falseFacts)) exp infos =
+			let rec removeFromFacts oldFacts newFacts ret =
+				match oldFacts with
+				| []									-> ret
+				| hd::tl when (Utils.notIn hd newFacts)	-> removeFromFacts tl newFacts (ret @ [hd])
+				| hd::tl								-> removeFromFacts tl newFacts ret
+			in
+			let rec addNewFacts oldFacts newFacts =
+				match newFacts with
+				| []									-> oldFacts
+				| hd::tl when (Utils.notIn hd oldFacts)	-> addNewFacts (oldFacts @ [hd]) tl
+				| hd::tl								-> addNewFacts oldFacts tl
+			in
 			let mergeFacts (tf1, ff1) (tf2, ff2) =
 				let rec looping l1 l2 =
 					match l2 with
@@ -105,26 +128,35 @@ module Expertsys : (ExpertsysSig with type t = char) =
 					| hd::tl when (Utils.notIn hd l1)	-> looping (l1 @ [hd]) tl
 					| hd::tl							-> looping l1 tl
 				in
-				((looping tf1 tf2), (looping ff1 ff2))
+				(* ((looping tf1 tf2), (looping ff1 ff2)) *)
+				(* print_endline "MERGE1"; *)
+				let ntf = looping tf1 tf2 in
+				(* print_endline "MERGE2"; *)
+				let nff = looping ff1 ff2 in
+				(* print_endline "RET MERGE"; *)
+				(ntf, nff)
 			in
 			let rec exprToFact (tf, ff) ex bol =
-				match exp with
+				match ex with
 				| Not (e)					-> exprToFact (tf, ff) e (not bol)
 				| And (e1, e2)				-> mergeFacts (exprToFact (tf, ff) e1 bol) (exprToFact (tf, ff) e2 bol)
-				| Value v when bol 			-> ((tf @ [v]), ff)
-				| Value v when not bol 		-> (tf, (ff @ [v]))
+				| Value v when bol 			-> ((tf @ [(Value v)]), ff)
+				| Value v when not bol 		-> (tf, (ff @ [(Value v)]))
+				| _							-> raise (EvalError.noOp infos)
 			in
-			exprToFact trueFacts falseFacts exp true (* LA JE RECUPERE UNE LISTE DE FAITS *)
-			exprToFact ([], []) exp true (* ?????????? meilleure solution *)
+			(* exprToFact trueFacts falseFacts exp true *) (* LA JE RECUPERE UNE LISTE DE FAITS *)
+			(* print_endline "YOLO ?"; *)
+			let (newTf, newFf) = exprToFact ([], []) exp true in (* ?????????? meilleure solution *)
+			Facts ((addNewFacts (removeFromFacts trueFacts newFf []) newTf), (addNewFacts (removeFromFacts falseFacts newTf []) newFf))
 			(* merge les nouvelles listes avec les anciennes en supprimant d'abords les ff dans les tf
 			et inversement, ensuite verifier si il n'y a pas de conflits *)
 
 
 
-			if (Utils.notIn exp trueFacts) then
-				Facts (trueFacts @ [exp], (removeFact falseFacts exp))
-			else
-				Facts (trueFacts, falseFacts)
+			(* if (Utils.notIn exp trueFacts) then *)
+			(* 	Facts (trueFacts @ [exp], (removeFact falseFacts exp)) *)
+			(* else *)
+			(* 	Facts (trueFacts, falseFacts) *)
 			(* A FAIRE !! *)
 			(* Facts (trueFacts @ [exp], falseFacts) *)
 
@@ -157,11 +189,12 @@ module Expertsys : (ExpertsysSig with type t = char) =
 			| Value v		-> (getBoolValue (Value v) facts) (* v a le type t = char mais il attend un type value*)
 			(* | _ -> false *)
 
-		let rec eval e (facts:fact) =
+		let rec eval e (facts:fact) infos =
 			match e with
 			(* | Impl (e1, e2) when (eval e1) = true -> (makeTrue e2); true (\* va pas marcher *\) *)
 			(* | Impl (e1, e2) when (eval e1) = true -> (addToTrueFacts facts e2) *)
-			| Impl (e1, e2) when (evalBool e1 facts) = true -> (addToTrueFacts facts e2) (* e2 fail *)
+			(* | Impl (e1, e2) when (evalBool e1 facts) = true -> (addToTrueFacts facts e2 infos) (\* e2 fail *\) *)
+			| Impl (e1, e2) when (evalBool e1 facts) = true -> (addExprToFacts facts e2 infos) (* e2 fail *)
 			(* | Impl (e1, e2) -> false (\* va pas marcher *\) *)
 			| Impl (e1, e2) -> facts (* va pas marcher *)
 			(* | Ifoif (e1, e2) when *) (* BONUS !!! *)
@@ -196,12 +229,23 @@ module Expertsys : (ExpertsysSig with type t = char) =
 
 (* LISTE DE RETOUR = (RULES (RULE * NB_LINE * ORIGINAL_STR)) * (FACTS (TRUE * FALSE)) * QUERIES *)
 let executeExpSys (rules, facts, queries) =
-	let checkQueries ff qr =
+	let checkQueries (Expertsys.Facts (trueFacts, falseFacts)) qrz =
+		let rec printQueries qr =
+			match qr with
+			| []		-> print_char '\n'
+			| hd::tl	-> print_string ((Expertsys.stringOfExpr hd) ^ " "); printQueries tl
+		in
+		print_endline "Final state for facts : ";
+		Expertsys.printFacts (Expertsys.Facts (trueFacts, falseFacts));
+		printQueries qrz
 	(* A FAIRE  *)
 	in
 	let startEval (rule, nbLine, ogStr) factz =
 		print_endline ("Evaluating rule line " ^ (string_of_int nbLine) ^ " : " ^ ogStr);
-		Expertsys.eval rule factz
+		let nf = Expertsys.eval rule factz (nbLine, ogStr) in
+		(* print_endline "RET EVAL"; *)
+		(* Expertsys.printFacts nf; *)
+		nf
 	in
 	let rec loop rulez factz =
 		match rulez with
