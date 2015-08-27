@@ -28,7 +28,7 @@ module type ExpertsysSig =
 		type fact = Facts of (expr list * expr list) (* (TRUE * FALSE) *)
 		(* type eval : expr -> t *)
 		(* val eval : expr -> bool (\* ? *\) *)
-		val addExprToFacts : fact -> expr -> (int * string) -> fact (* ????? *)
+		val addExprToFacts : fact -> expr -> (int * string) -> bool -> fact (* ????? *)
 		(* val addToTrueFacts : fact -> expr -> fact *)
 		(* val getBoolValue : t -> fact -> bool *)
 		val getBoolValue : expr -> fact -> bool
@@ -108,7 +108,8 @@ module Expertsys : (ExpertsysSig with type t = char) =
 	(* A + B => !(C + D) *)
 
 		(* let addToTrueFacts (Facts (trueFacts, falseFacts)) exp = *)
-		let addExprToFacts (Facts (trueFacts, falseFacts)) exp infos =
+		(* let addExprToFacts (Facts (trueFacts, falseFacts)) exp infos = *)
+		let addExprToFacts (Facts (trueFacts, falseFacts)) exp infos boolz =
 			let rec removeFromFacts oldFacts newFacts ret =
 				match oldFacts with
 				| []									-> ret
@@ -146,7 +147,7 @@ module Expertsys : (ExpertsysSig with type t = char) =
 			in
 			(* exprToFact trueFacts falseFacts exp true *) (* LA JE RECUPERE UNE LISTE DE FAITS *)
 			(* print_endline "YOLO ?"; *)
-			let (newTf, newFf) = exprToFact ([], []) exp true in (* ?????????? meilleure solution *)
+			let (newTf, newFf) = exprToFact ([], []) exp boolz in (* ?????????? meilleure solution *)
 			Facts ((addNewFacts (removeFromFacts trueFacts newFf []) newTf), (addNewFacts (removeFromFacts falseFacts newTf []) newFf))
 			(* merge les nouvelles listes avec les anciennes en supprimant d'abords les ff dans les tf
 			et inversement, ensuite verifier si il n'y a pas de conflits *)
@@ -194,7 +195,7 @@ module Expertsys : (ExpertsysSig with type t = char) =
 			(* | Impl (e1, e2) when (eval e1) = true -> (makeTrue e2); true (\* va pas marcher *\) *)
 			(* | Impl (e1, e2) when (eval e1) = true -> (addToTrueFacts facts e2) *)
 			(* | Impl (e1, e2) when (evalBool e1 facts) = true -> (addToTrueFacts facts e2 infos) (\* e2 fail *\) *)
-			| Impl (e1, e2) when (evalBool e1 facts) = true -> (addExprToFacts facts e2 infos) (* e2 fail *)
+			| Impl (e1, e2) when (evalBool e1 facts) = true -> (addExprToFacts facts e2 infos true) (* e2 fail *)
 			(* | Impl (e1, e2) -> false (\* va pas marcher *\) *)
 			| Impl (e1, e2) -> facts (* va pas marcher *)
 			(* | Ifoif (e1, e2) when *) (* BONUS !!! *)

@@ -1,0 +1,7 @@
+A <=> !C ^ B
+D=> B + !C
+=D
+?A
+
+#A should be False because B is true and C is false (Default)
+#So the XOR is false
