@@ -167,12 +167,12 @@ let checkParsing (parsedRules, facts, queries) =
 	let getLeftExpr (rl, line, str) =
 		match rl with
 		| ExpSys.Expertsys.Impl (e1, e2) -> e1
-		(* | ExpSys.Expertsys.Ifoif (e1, e2) -> e1 *)
+		| ExpSys.Expertsys.Ifoif (e1, e2) -> e1
 	in
 	let getRightFacts (rl, line, str) =
 		match rl with
 		| ExpSys.Expertsys.Impl (e1, e2) -> extractFacts e2
-		(* | ExpSys.Expertsys.Ifoif (e1, e2) -> extractFacts e2 *)
+		| ExpSys.Expertsys.Ifoif (e1, e2) -> extractFacts e2
 	in
 	let checkRule rule lst =
 		let leftExpr = getLeftExpr rule in
@@ -250,7 +250,7 @@ let parseSingleRule (lst, line) =
 		| []	-> raise (ParsingError.expi "statement with no effect (no '=>' or '<=>')" line)
 		(* | hd::tl when hd = LexerES.Impl		-> (ExpSys.Expertsys.Impl ((getExpr tmp), (getExpr tl)), line) *)
 		| hd::tl when hd = LexerES.Impl		-> (ExpSys.Expertsys.Impl ((getExpr tmp), (getExpr tl)), line, (tokensToString rest))
-		(* | hd::tl when hd = LexerES.Ifoif	-> (ExpSys.Expertsys.Ifoif ((getExpr tmp), (getExpr tl)), line, (tokensToString rest)) *)
+		| hd::tl when hd = LexerES.Ifoif	-> (ExpSys.Expertsys.Ifoif ((getExpr tmp), (getExpr tl)), line, (tokensToString rest))
 		| hd::tl							-> loop tl (tmp @ [hd]) rest
 		(* | hd::tl							-> loop tl (tmp @ [hd]) *)
 	in
@@ -282,7 +282,7 @@ let addFalseFacts (parsedRules, (ExpSys.Expertsys.Facts (trueFacts, falseFacts))
 			begin
 				match hd with
 				| ExpSys.Expertsys.Impl (e1, e2)  -> loop tl (addFF e1 e2 ret)
-				(* | ExpSys.Expertsys.Ifoif (e1, e2)  -> loop tl (addFF e1 e2 ret) *)
+				| ExpSys.Expertsys.Ifoif (e1, e2)  -> loop tl (addFF e1 e2 ret)
 			end
 	in
 	let fFacts = loop parsedRules [] in
@@ -330,7 +330,7 @@ let printPL (parsedRules, facts, queries) =
 		let stringOfRule exp =
 			match exp with
 			| ExpSys.Expertsys.Impl (e1, e2) -> ((ExpSys.Expertsys.stringOfExpr e1) ^ " => " ^ (ExpSys.Expertsys.stringOfExpr e2))
-			(* | ExpSys.Expertsys.Ifoif (e1, e2) -> ((ExpSys.Expertsys.stringOfExpr e1) ^ " <=> " ^ (ExpSys.Expertsys.stringOfExpr e2)) *)
+			| ExpSys.Expertsys.Ifoif (e1, e2) -> ((ExpSys.Expertsys.stringOfExpr e1) ^ " <=> " ^ (ExpSys.Expertsys.stringOfExpr e2))
 			(* | _ -> ("failed to print rule line " ^ (string_of_int line)) *)
 		in
 		print_endline ("Rule line " ^ (string_of_int line) ^ " { " ^ str ^ " } ");
