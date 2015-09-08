@@ -25,7 +25,9 @@ module type ExpertsysSig =
 		(* val addExprToFacts : fact -> expr -> (int * string) -> bool -> fact (\* ????? *\) *)
 		(* val getBoolValue : expr -> fact -> bool *) (* TEST *)
 		(* val evalBool : expr -> fact -> bool *) (* TEST *)
-		val eval : rule -> fact -> (int * string) -> fact
+		(* val eval : rule -> fact -> (int * string) -> fact *)
+		val eval : rule -> fact -> (int * string) -> fact list
+		val makeEval : rule -> fact list -> (int * string) -> fact list
 		val printFacts : fact -> unit
 		val stringOfExpr : expr -> string
 	end
@@ -99,7 +101,7 @@ module Expertsys : (ExpertsysSig with type t = char) =
 			let rec loop1 fl ret =
 				match fl with
 				| []		-> ret
-				| hd::tl	-> loop tl (ret @ (loop2 factList2 hd []))
+				| hd::tl	-> loop1 tl (ret @ (loop2 factList2 hd []))
 			in
 			loop1 factList1 []
 			(* let ntf = addNewFacts tf1 tf2 in *)
@@ -125,6 +127,7 @@ module Expertsys : (ExpertsysSig with type t = char) =
 				| Not (e)					-> exprToFact (tf, ff) e (not bol)
 				| And (e1, e2)				-> mergeFacts (exprToFact (tf, ff) e1 bol) (exprToFact (tf, ff) e2 bol)
 				| Or (e1, e2)				-> (exprToFact (tf, ff) e1 bol) @ (exprToFact (tf, ff) e2 bol)
+				| Xor (e1, e2)				-> (mergeFacts (exprToFact (tf, ff) e1 bol) (exprToFact (tf, ff) e2 (not bol))) @ (mergeFacts (exprToFact (tf, ff) e1 (not bol)) (exprToFact (tf, ff) e2 bol))
 				| Value v when bol 			-> [(Facts ((tf @ [(Value v)]), ff))]
 				| Value v when not bol 		-> [(Facts (tf, (ff @ [(Value v)])))]
 				(* | Value v when bol 			-> (Facts ((tf @ [(Value v)]), ff)) *)
@@ -198,13 +201,24 @@ module Expertsys : (ExpertsysSig with type t = char) =
 			loop factz []
 
 		let printFacts (Facts (trueFacts, falseFacts)) =
-			let rec loop lst boolVal =
+			let rec loop lst =
 				match lst with
 				| [] -> print_char '\n'
-				| hd::tl -> print_endline ((stringOfExpr hd) ^ " is " ^ boolVal); loop tl boolVal
+				| hd::[] -> print_string (stringOfExpr hd); loop []
+				| hd::tl -> print_string ((stringOfExpr hd) ^ ", "); loop tl
 			in
-			loop trueFacts "true";
-			loop falseFacts "false"
+			print_string "True facts : ";
+			loop trueFacts;
+			print_string "False facts : ";
+			loop falseFacts
+		(* let printFacts (Facts (trueFacts, falseFacts)) = *)
+		(* 	let rec loop lst boolVal = *)
+		(* 		match lst with *)
+		(* 		| [] -> print_char '\n' *)
+		(* 		| hd::tl -> print_endline ((stringOfExpr hd) ^ " is " ^ boolVal); loop tl boolVal *)
+		(* 	in *)
+		(* 	loop trueFacts "true"; *)
+		(* 	loop falseFacts "false" *)
 	end
 
 
@@ -216,20 +230,41 @@ module Expertsys : (ExpertsysSig with type t = char) =
 
 (* LISTE DE RETOUR = (RULES (RULE * NB_LINE * ORIGINAL_STR)) * (FACTS (TRUE * FALSE)) * QUERIES *)
 let executeExpSys (rules, facts, queries) =
-	let checkQueries (Expertsys.Facts (trueFacts, falseFacts)) qrz =
+	(* let checkQueries (Expertsys.Facts (trueFacts, falseFacts)) qrz = *)
+	(* 	let rec printQueries qr = *)
+	(* 		match qr with *)
+	(* 		| []		-> print_char '\n' *)
+	(* 		| hd::tl	-> print_string ((Expertsys.stringOfExpr hd) ^ " "); printQueries tl *)
+	(* 	in *)
+	(* 	print_endline "Final state for facts : "; *)
+	(* 	Expertsys.printFacts (Expertsys.Facts (trueFacts, falseFacts)); *)
+	(* 	printQueries qrz *)
+	let checkQueries factz qrz =
+		let rec loop ft total nb =
+			match ft with
+			| []		-> print_endline "**END**"
+			| hd::tl	-> print_endline ("State " ^ (string_of_int nb) ^ "/" ^ (string_of_int total) ^ " :"); Expertsys.printFacts hd; loop tl total (nb + 1)
+		in
 		let rec printQueries qr =
 			match qr with
 			| []		-> print_char '\n'
-			| hd::tl	-> print_string ((Expertsys.stringOfExpr hd) ^ " "); printQueries tl
+			| hd::[]	-> print_string (Expertsys.stringOfExpr hd); printQueries []
+			| hd::tl	-> print_string ((Expertsys.stringOfExpr hd) ^ ", "); printQueries tl
 		in
 		print_endline "Final state for facts : ";
-		Expertsys.printFacts (Expertsys.Facts (trueFacts, falseFacts));
-		printQueries qrz
+		print_endline ("There is " ^ (string_of_int (List.length factz)) ^ " different(s) state(s)");
+		print_string "The queries that where asked for are the following : ";
+		printQueries qrz;
+		print_endline "The results are :";
+		loop factz (List.length factz) 1
+		(* Expertsys.printFacts (Expertsys.Facts (trueFacts, falseFacts)) *)
 	(* A REFAIRE  *)
 	in
 	let startEval (rule, nbLine, ogStr) factz =
 		print_endline ("Evaluating rule line " ^ (string_of_int nbLine) ^ " : " ^ ogStr);
-		let nf = Expertsys.eval rule factz (nbLine, ogStr) in
+		print_endline ("Currently " ^ (string_of_int (List.length factz)) ^ " different(s) state(s)");
+		(* let nf = Expertsys.eval rule factz (nbLine, ogStr) in *)
+		let nf = Expertsys.makeEval rule factz (nbLine, ogStr) in
 		nf
 	in
 	let rec loop rulez factz =
@@ -237,8 +272,8 @@ let executeExpSys (rules, facts, queries) =
 		| [] -> factz
 		| hd::tl -> loop tl (startEval hd factz)
 	in
-	let finalFacts = loop rules facts in
-	(* let finalFacts = loop rules [facts] in (\* va pas marcher *\) *)
+	(* let finalFacts = loop rules facts in *)
+	let finalFacts = loop rules [facts] in (* va pas marcher *)
 	checkQueries finalFacts queries
 
 (* let main () = *)

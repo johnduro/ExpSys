@@ -1,5 +1,15 @@
 
 
+(* arguments :
+				-v verbose (unit)
+				-f files (rest)
+*)
+
+let verboseBool = ref false
+
+(* STOCKER LES NOMS DE FICHIERS !! *)
+
+let specList = [("-v", Arg.Set verboseBool, "Enable verbose mode"), ("-f", Arg.Rest (* ICI FONCTION QUI RECUPERE LES NOMS DE FICHIERS*), "Get remaining arguments as filename to execute Expert System on them")]
 
 let main () =
 	if Array.length Sys.argv > 1

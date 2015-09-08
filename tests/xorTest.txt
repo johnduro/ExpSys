@@ -1,0 +1,11 @@
+# test de " | " (OR)
+
+
+A => B
+A + B => C ^ D
+C => E ^ F
+D => G ^ H
+
+=AF
+
+?EH
