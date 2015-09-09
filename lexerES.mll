@@ -67,8 +67,8 @@ let rec printMyList ls =
 	| hd::tl ->
 		begin
 			match hd with
-			| ParentIn 		-> print_string " -( " ; printMyList tl
-			| ParentOut 	-> print_string " )- " ; printMyList tl
+			| ParentIn 		-> print_string " ( " ; printMyList tl
+			| ParentOut 	-> print_string " ) " ; printMyList tl
 			| Not			-> print_string " NOT" ; printMyList tl
 			| Or			-> print_string " OR " ; printMyList tl
 			| And			-> print_string " AND " ; printMyList tl
@@ -77,8 +77,8 @@ let rec printMyList ls =
 			| Ifoif			-> print_string " <=> " ; printMyList tl
 			| TrueFacts 	-> print_string " TRUE FACTS : " ; printMyList tl
 			| Requests		-> print_string " REQUEST : " ; printMyList tl
-			| Fact (fx) 	-> print_string (" -" ^ (Char.escaped fx) ^ "- ") ; printMyList tl
-			| NewLine (nl)	-> print_string ("  -NL (" ^ (string_of_int nl) ^ ")-\n") ; printMyList tl
+			| Fact (fx) 	-> print_string (" " ^ (Char.escaped fx) ^ " ") ; printMyList tl
+			| NewLine (nl)	-> print_string ("  -- line " ^ (string_of_int nl) ^ " --\n") ; printMyList tl
 		end
 
 let cleanList lst =
@@ -97,10 +97,20 @@ let cleanList lst =
 
 
 
-let lexExpSys chan debug =
+let lexExpSys chan debug verbose =
 	let lexbuf = Lexing.from_channel chan in
 	let returnList = cleanList (tokenLex 1 [] lexbuf) in
-	if debug = true then printMyList returnList;
+	if verbose || debug then
+		begin
+			print_string "Lexing ...";
+			if debug = true
+			then
+				begin
+					print_endline "\n\nResults :";
+					printMyList returnList
+				end;
+			print_endline "... done"
+		end;
 	returnList
 
 }

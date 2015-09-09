@@ -69,11 +69,6 @@ let rec extractFacts e =
 	| ExpSys.Expertsys.Xor (e1, e2)		-> (extractFacts e1) @ (extractFacts e2)
 	| ExpSys.Expertsys.Value v			-> [ExpSys.Expertsys.Value v]
 
-(* let rec notIn el lst = *)
-(* 	match lst with *)
-(* 	| []					-> true *)
-(* 	| hd::tl when hd = el	-> false *)
-(* 	| hd::tl				-> notIn el tl *)
 
 let tokensToString lst =
 	let tokenToChar tk add =
@@ -86,11 +81,8 @@ let tokensToString lst =
 		| LexerES.Xor		-> "^" ^ add
 		| LexerES.Impl		-> "=>" ^ add
 		| LexerES.Ifoif		-> "<=>" ^ add
-		(* | LexerES.TrueFacts	->  *)
-		(* | LexerES.Requests	-> Tag.Op *)
 		| LexerES.Fact ff	-> (Char.escaped ff) ^ add
 		| _					-> "wut?!"
-		(* | LexerES.NewLine _	-> Tag.Nl *)
 	in
 	let rec loop ls ret =
 		match ls with
@@ -160,7 +152,6 @@ let checkParsing (parsedRules, facts, queries) =
 	let rec isSameFactList f1 f2 =
 		match f1 with
 		| [] -> true
-		(* | hd::tl when (notIn hd f2) -> false *)
 		| hd::tl when (Utils.notIn hd f2) -> false
 		| hd::tl -> isSameFactList tl f2
 	in
@@ -248,13 +239,10 @@ let parseSingleRule (lst, line) =
 	let rec loop ls tmp rest =
 		match ls with
 		| []	-> raise (ParsingError.expi "statement with no effect (no '=>' or '<=>')" line)
-		(* | hd::tl when hd = LexerES.Impl		-> (ExpSys.Expertsys.Impl ((getExpr tmp), (getExpr tl)), line) *)
 		| hd::tl when hd = LexerES.Impl		-> (ExpSys.Expertsys.Impl ((getExpr tmp), (getExpr tl)), line, (tokensToString rest))
 		| hd::tl when hd = LexerES.Ifoif	-> (ExpSys.Expertsys.Ifoif ((getExpr tmp), (getExpr tl)), line, (tokensToString rest))
 		| hd::tl							-> loop tl (tmp @ [hd]) rest
-		(* | hd::tl							-> loop tl (tmp @ [hd]) *)
 	in
-	(* loop lst [] *)
 	loop lst [] lst
 
 
@@ -264,10 +252,9 @@ let addFalseFacts (parsedRules, (ExpSys.Expertsys.Facts (trueFacts, falseFacts))
 	let addFF e1 e2 ff =
 		let rec loop lst ret =
 			match lst with
-			| []													-> ret
-			(* | hd::tl when (notIn hd trueFacts) && (notIn hd ret)	-> loop tl (ret @ [hd]) *)
+			| []																-> ret
 			| hd::tl when (Utils.notIn hd trueFacts) && (Utils.notIn hd ret)	-> loop tl (ret @ [hd])
-			| hd::tl												-> loop tl ret
+			| hd::tl															-> loop tl ret
 		in
 		let e1Fact = extractFacts e1 in
 		let e2Fact = extractFacts e2 in
@@ -324,17 +311,15 @@ let parseList tokenList =
 
 
 (* PRINT LE RESULTAT DU PARSING *)
-let printPL (parsedRules, facts, queries) =
-	(* let printParsedRules (expr, line) = *)
+let printPL (parsedRules, facts, queries) debug =
 	let printParsedRules (expr, line, str) =
 		let stringOfRule exp =
 			match exp with
 			| ExpSys.Expertsys.Impl (e1, e2) -> ((ExpSys.Expertsys.stringOfExpr e1) ^ " => " ^ (ExpSys.Expertsys.stringOfExpr e2))
 			| ExpSys.Expertsys.Ifoif (e1, e2) -> ((ExpSys.Expertsys.stringOfExpr e1) ^ " <=> " ^ (ExpSys.Expertsys.stringOfExpr e2))
-			(* | _ -> ("failed to print rule line " ^ (string_of_int line)) *)
 		in
-		print_endline ("Rule line " ^ (string_of_int line) ^ " { " ^ str ^ " } ");
-		print_endline (stringOfRule expr)
+		print_endline ("line " ^ (string_of_int line) ^ " :\t" ^ str);
+		if debug then print_endline ("result :\t" ^ (stringOfRule expr) ^ "\n")
 	in
 	let rec loopPR ll =
 		match ll with
@@ -346,15 +331,13 @@ let printPL (parsedRules, facts, queries) =
 		| []		-> print_char '\n'
 		| hd::tl	-> print_string ((ExpSys.Expertsys.stringOfExpr hd) ^ " "); printQueries tl
 	in
-	print_endline "**************";
-	print_endline "PARSED RULES :";
+	print_endline "\n\nParsing ...\n";
 	loopPR parsedRules;
-	print_endline "*****";
-	print_endline "FACTS";
+	print_endline "\nFacts :";
 	ExpSys.Expertsys.printFacts facts;
-	print_endline "*********";
-	print_endline "QUERIES :";
-	printQueries queries
+	print_string "\nQueries : ";
+	printQueries queries;
+	print_endline "\n...done\n"
 
 
 
@@ -389,10 +372,9 @@ let printPL (parsedRules, facts, queries) =
 (* ((((A | B) | C) | D) | E) | F *)
 
 
-let parseExpSys tokenList =
+let parseExpSys tokenList debug verbose =
 	checkList tokenList;
 	let parsedlist = parseList tokenList in  (* LISTE DE RETOUR = (RULES (RULE * NB_LINE * ORIGINAL_STR)) * (FACTS (TRUE * FALSE)) * QUERIES *)
-	printPL parsedlist;
 	checkParsing parsedlist;
+	if debug || verbose then printPL parsedlist debug;
 	parsedlist
-	(* print_endline "WUT ?!" *)

@@ -229,7 +229,7 @@ module Expertsys : (ExpertsysSig with type t = char) =
 
 
 (* LISTE DE RETOUR = (RULES (RULE * NB_LINE * ORIGINAL_STR)) * (FACTS (TRUE * FALSE)) * QUERIES *)
-let executeExpSys (rules, facts, queries) =
+let executeExpSys (rules, facts, queries) verbose =
 	(* let checkQueries (Expertsys.Facts (trueFacts, falseFacts)) qrz = *)
 	(* 	let rec printQueries qr = *)
 	(* 		match qr with *)
@@ -273,8 +273,10 @@ let executeExpSys (rules, facts, queries) =
 		| hd::tl -> loop tl (startEval hd factz)
 	in
 	(* let finalFacts = loop rules facts in *)
+	if verbose then print_endline "\nEvaluating ...\n";
 	let finalFacts = loop rules [facts] in (* va pas marcher *)
-	checkQueries finalFacts queries
+	checkQueries finalFacts queries;
+	if verbose then print_endline "\n... done"
 
 (* let main () = *)
 (* 	(\* A | B => E *\) *)
