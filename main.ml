@@ -28,7 +28,7 @@ let treatFile file =
 				let cin = open_in fName in
 				let lst = LexerES.lexExpSys cin !debugBool !verboseBool in
 				let prs = ParserES.parseExpSys lst !debugBool !verboseBool in
-				ExpSys.executeExpSys prs !verboseBool;
+				ExpSys.executeExpSys prs !debugBool !verboseBool;
 			end
 		with
 		| ParserES.ParsingExcp err		-> print_endline err (* PAS TESTE !!! *)
