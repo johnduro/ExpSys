@@ -225,7 +225,7 @@ let parseSingleRule (lst, line) =
 		let rec loopExpr ll stkVal stkOp =
 			match ll with
 			| [] when (List.length stkVal) > 0 																												-> List.hd (resolveOp stkVal stkOp (List.length stkOp))
-			| []																																			-> raise(ParsingError.expi "error occured while parsing" line)
+			| []																																			-> raise (ParsingError.expi "error occured while parsing" line)
 			| hd::tl when hd = LexerES.ParentIn 																											-> loopExpr (skipParenthesis tl) ([(loopExpr tl [] [])] @ stkVal) stkOp
 			| hd::tl when hd = LexerES.ParentOut																											-> List.hd (resolveOp stkVal stkOp (List.length stkOp))
 			| hd::tl when (matchTag hd) = Tag.Fs																											-> loopExpr tl ((getFact hd)::stkVal) stkOp
@@ -238,7 +238,7 @@ let parseSingleRule (lst, line) =
 	in
 	let rec loop ls tmp rest =
 		match ls with
-		| []	-> raise (ParsingError.expi "statement with no effect (no '=>' or '<=>')" line)
+		| []								-> raise (ParsingError.expi "statement with no effect (no '=>' or '<=>')" line)
 		| hd::tl when hd = LexerES.Impl		-> (ExpSys.Expertsys.Impl ((getExpr tmp), (getExpr tl)), line, (tokensToString rest))
 		| hd::tl when hd = LexerES.Ifoif	-> (ExpSys.Expertsys.Ifoif ((getExpr tmp), (getExpr tl)), line, (tokensToString rest))
 		| hd::tl							-> loop tl (tmp @ [hd]) rest
