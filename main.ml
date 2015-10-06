@@ -19,7 +19,6 @@ let collect arg = fileList := !fileList @ [arg]
 
 let usage = "expertSystem options :"
 
-
 let treatFile file =
 	let tf fName =
 		try
