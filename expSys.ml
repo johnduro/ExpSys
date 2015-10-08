@@ -189,13 +189,46 @@ let executeExpSys (rules, facts, queries) debug verbose =
 		print_endline "The results are :\n";
 		loop factz (List.length factz) 1
 	in
-	let startEval (rule, nbLine, ogStr) factz =
+	(* let startEval (rule, nbLine, ogStr) factz = *)
+	let rec startEval (rule, nbLine, ogStr) factz old =
+		let rec comp l1 l2 =
+			let rec compl ll1 ll2 =
+				match ll1 with
+				| [] -> begin
+							match ll2 with
+							| [] -> true
+							| hdd::tll -> false
+						end
+				| hd1::tll1 ->
+							begin
+								match ll2 with
+								| [] -> false
+								| hd2::tll2 when hd1 = hd2 -> compl tll1 tll2
+								| hd2::tll2 -> false
+							end
+			in
+			match l1 with
+			| [] -> begin
+						match l2 with
+						| [] -> true
+						| hd::tl -> false
+					end
+			| (Expertsys.Facts (tf1, ff1))::tl1 ->
+						begin
+							match l2 with
+							| [] -> false
+							| (Expertsys.Facts (tf2, ff2))::tl2 when (compl tf1 tf2) && (compl ff1 ff2) -> comp tl1 tl2
+							| hd2::tl2 -> false
+						end
+		in
 		let rec printFactsList fl nbState =
 			match fl with
 			| []		-> print_char '\n'
 			| hd::tl	-> print_endline ("State number " ^ (string_of_int nbState) ^ " :"); Expertsys.printFacts hd; print_char '\n'; printFactsList tl (nbState + 1)
 		in
 		let nf = Expertsys.makeEval rule factz (nbLine, ogStr) in
+			(* factz; *)
+			(* print_endline ("HAHAHAHHAHHAHHAHAHAHHAHAHAHAHHAHAH"); *)
 		if verbose || debug then
 			begin
 				print_endline ("Evaluating rule line " ^ (string_of_int nbLine) ^ " : " ^ ogStr);
@@ -206,15 +239,21 @@ let executeExpSys (rules, facts, queries) debug verbose =
 				print_endline ("After evaluation there is " ^ (string_of_int (List.length nf)) ^ " different(s) state(s)\n");
 				if debug then printFactsList nf 1;
 			end;
-		nf
-	in
-	let rec loop rulez factz =
+		if (comp nf factz) = false then
+			loop old nf []
+		else
+			nf
+	(* in *)
+	(* let rec loop rulez factz = *)
+	and loop rulez factz old =
 		match rulez with
 		| [] -> factz
-		| hd::tl -> loop tl (startEval hd factz)
+		(* | hd::tl -> loop tl (startEval hd factz) *)
+		| hd::tl -> loop tl (startEval hd factz old) (old @ [hd])
 	in
 	if verbose then print_endline "\nEvaluating ...\n";
-	let finalFacts = loop rules [facts] in
+	(* let finalFacts = loop rules [facts] in *)
+	let finalFacts = loop rules [facts] [] in
 	checkQueries finalFacts;
 	if verbose then print_endline "\n... done"
 
