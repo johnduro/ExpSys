@@ -282,6 +282,7 @@ let addFalseFacts (parsedRules, (ExpSys.Expertsys.Facts (trueFacts, falseFacts))
 let parseList tokenList =
 	let rec getRules lst ret tmp =
 		match lst with
+		| [] when (List.length tmp) > 0			-> ret @ [(tmp, 0)]
 		| []									-> ret
 		| hd::tl when (matchTag hd) = Tag.Nl	-> getRules tl (ret @ [(tmp, getLine hd)]) []
 		| hd::tl								-> getRules tl ret (tmp @ [hd])
