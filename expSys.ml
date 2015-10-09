@@ -22,10 +22,12 @@ module type ExpertsysSig =
 		type expr = Value of t | Not of expr | And of (expr * expr) | Or of (expr * expr) | Xor of (expr * expr)
 		type rule = Impl of (expr * expr) | Ifoif of (expr * expr)
 		type fact = Facts of (expr list * expr list) (* (TRUE * FALSE) *)
-		val eval : rule -> fact -> (int * string) -> fact list
-		val makeEval : rule -> fact list -> (int * string) -> fact list
+		val eval : rule -> fact -> (int * string) -> bool -> fact list
+		val makeEval : rule -> fact list -> (int * string) -> bool -> fact list
 		val printFacts : fact -> unit
 		val stringOfExpr : expr -> string
+		val compareListOfFactsList : fact list -> fact list -> bool
+		val evalBool : expr -> fact -> bool
 	end
 
 module Expertsys : (ExpertsysSig with type t = char) =
@@ -68,25 +70,6 @@ module Expertsys : (ExpertsysSig with type t = char) =
 			| hd::tl when (Utils.notIn hd newFacts)	-> removeFromFacts tl newFacts (ret @ [hd])
 			| hd::tl								-> removeFromFacts tl newFacts ret
 
-		let addExprToFacts (Facts (trueFacts, falseFacts)) exp infos boolz =
-			let rec injectNewFacts fl ret =
-				match fl with
-				| []							-> ret
-				| (Facts (newTf, newFf))::tl	-> injectNewFacts tl (ret @ [(Facts ((addNewFacts (removeFromFacts trueFacts newFf []) newTf), (addNewFacts (removeFromFacts falseFacts newTf []) newFf)))])
-			in
-			let rec exprToFact (tf, ff) ex bol =
-				match ex with
-				| Not (e)					-> exprToFact (tf, ff) e (not bol)
-				| And (e1, e2)				-> mergeFacts (exprToFact (tf, ff) e1 bol) (exprToFact (tf, ff) e2 bol)
-				| Or (e1, e2)				-> (exprToFact (tf, ff) e1 bol) @ (exprToFact (tf, ff) e2 bol)
-				| Xor (e1, e2)				-> (mergeFacts (exprToFact (tf, ff) e1 bol) (exprToFact (tf, ff) e2 (not bol))) @ (mergeFacts (exprToFact (tf, ff) e1 (not bol)) (exprToFact (tf, ff) e2 bol))
-				| Value v when bol 			-> [(Facts ((tf @ [(Value v)]), ff))]
-				| Value v when not bol 		-> [(Facts (tf, (ff @ [(Value v)])))]
-				| _							-> raise (EvalError.noOp infos)
-			in
-			let factsList = exprToFact ([], []) exp boolz in
-			injectNewFacts factsList []
-
 		let getBoolValue value (Facts (trueFacts, falseFacts)) =
 			let checkValue (vl:expr) =
 				match vl with
@@ -114,6 +97,28 @@ module Expertsys : (ExpertsysSig with type t = char) =
 			| Xor (e1, e2)	-> (evalBool e1 facts) <> (evalBool e2 facts)
 			| Value v		-> (getBoolValue (Value v) facts)
 
+		let addExprToFacts (Facts (trueFacts, falseFacts)) exp infos boolz firstTurn =
+			let rec injectNewFacts fl ret =
+				match fl with
+				| []							-> ret
+				| (Facts (newTf, newFf))::tl	-> injectNewFacts tl (ret @ [(Facts ((addNewFacts (removeFromFacts trueFacts newFf []) newTf), (addNewFacts (removeFromFacts falseFacts newTf []) newFf)))])
+			in
+			let rec exprToFact (tf, ff) ex bol =
+				match ex with
+				| Not (e)						-> exprToFact (tf, ff) e (not bol)
+				| And (e1, e2)					-> mergeFacts (exprToFact (tf, ff) e1 bol) (exprToFact (tf, ff) e2 bol)
+				| Or (e1, e2) when firstTurn	-> (exprToFact (tf, ff) e1 bol) @ (exprToFact (tf, ff) e2 bol)
+				| Or (e1, e2)					-> if (evalBool e1 (Facts (trueFacts, falseFacts))) = bol then (exprToFact (tf, ff) e1 bol) else (exprToFact (tf, ff) e2 bol)
+				| Xor (e1, e2) when firstTurn	-> (mergeFacts (exprToFact (tf, ff) e1 bol) (exprToFact (tf, ff) e2 (not bol))) @ (mergeFacts (exprToFact (tf, ff) e1 (not bol)) (exprToFact (tf, ff) e2 bol))
+				| Xor (e1, e2)					-> if (evalBool e1 (Facts (trueFacts, falseFacts))) = bol then (mergeFacts (exprToFact (tf, ff) e1 bol) (exprToFact (tf, ff) e2 (not bol))) else (mergeFacts (exprToFact (tf, ff) e1 (not bol)) (exprToFact (tf, ff) e2 bol))
+				| Value v when bol 				-> [(Facts ((tf @ [(Value v)]), ff))]
+				| Value v when not bol 			-> [(Facts (tf, (ff @ [(Value v)])))]
+				| _								-> raise (EvalError.noOp infos)
+			in
+			let factsList = exprToFact ([], []) exp boolz in
+			injectNewFacts factsList []
+
+
 		let mergeIfoif factsList1 factsList2 =
 			let rec loop2 (Facts (tf1, ff1)) fl ret =
 				match fl with
@@ -127,18 +132,18 @@ module Expertsys : (ExpertsysSig with type t = char) =
 			in
 			loop1 factsList1 []
 
-		let rec eval e (facts:fact) infos =
+		let rec eval e (facts:fact) infos firstTurn =
 			match e with
-			| Impl (e1, e2) when (evalBool e1 facts) = true						-> (addExprToFacts facts e2 infos true)
+			| Impl (e1, e2) when (evalBool e1 facts) = true						-> (addExprToFacts facts e2 infos true firstTurn)
 			| Impl (e1, e2)														-> [facts]
-			| Ifoif (e1, e2) when (evalBool e1 facts) && (evalBool e2 facts)	-> (mergeIfoif (addExprToFacts facts e1 infos true) (addExprToFacts facts e2 infos true))
-			| Ifoif (e1, e2)													-> (mergeIfoif (addExprToFacts facts e1 infos false) (addExprToFacts facts e2 infos false))
+			| Ifoif (e1, e2) when (evalBool e1 facts) && (evalBool e2 facts)	-> (mergeIfoif (addExprToFacts facts e1 infos true firstTurn) (addExprToFacts facts e2 infos true firstTurn))
+			| Ifoif (e1, e2)													-> (mergeIfoif (addExprToFacts facts e1 infos false firstTurn) (addExprToFacts facts e2 infos false firstTurn))
 
-		let rec makeEval e factz infos =
+		let rec makeEval e factz infos firstTurn =
 			let rec loop fac ret =
 				match fac with
 				| []		-> ret
-				| hd::tl	-> loop tl (ret @ (eval e hd infos))
+				| hd::tl	-> loop tl (ret @ (eval e hd infos firstTurn))
 			in
 			loop factz []
 
@@ -153,6 +158,36 @@ module Expertsys : (ExpertsysSig with type t = char) =
 			loop trueFacts;
 			print_string "False facts : ";
 			loop falseFacts
+
+		let rec compareListOfFactsList list1 list2 =
+			let rec compFlist flist1 flist2 =
+				match flist1 with
+				| [] -> begin
+							match flist2 with
+							| [] -> true
+							| hdd::tll -> false
+						end
+				| hd1::tll1 ->
+							begin
+								match flist2 with
+								| [] -> false
+								| hd2::tll2 when hd1 = hd2 -> compFlist tll1 tll2
+								| hd2::tll2 -> false
+							end
+			in
+			match list1 with
+			| [] -> begin
+						match list2 with
+						| [] -> true
+						| hd::tl -> false
+					end
+			| (Facts (tf1, ff1))::tl1 ->
+						begin
+							match list2 with
+							| [] -> false
+							| (Facts (tf2, ff2))::tl2 when (compFlist tf1 tf2) && (compFlist ff1 ff2) -> compareListOfFactsList tl1 tl2
+							| hd2::tl2 -> false
+						end
 	end
 
 
@@ -189,46 +224,13 @@ let executeExpSys (rules, facts, queries) debug verbose =
 		print_endline "The results are :\n";
 		loop factz (List.length factz) 1
 	in
-	(* let startEval (rule, nbLine, ogStr) factz = *)
-	let rec startEval (rule, nbLine, ogStr) factz old =
-		let rec comp l1 l2 =
-			let rec compl ll1 ll2 =
-				match ll1 with
-				| [] -> begin
-							match ll2 with
-							| [] -> true
-							| hdd::tll -> false
-						end
-				| hd1::tll1 ->
-							begin
-								match ll2 with
-								| [] -> false
-								| hd2::tll2 when hd1 = hd2 -> compl tll1 tll2
-								| hd2::tll2 -> false
-							end
-			in
-			match l1 with
-			| [] -> begin
-						match l2 with
-						| [] -> true
-						| hd::tl -> false
-					end
-			| (Expertsys.Facts (tf1, ff1))::tl1 ->
-						begin
-							match l2 with
-							| [] -> false
-							| (Expertsys.Facts (tf2, ff2))::tl2 when (compl tf1 tf2) && (compl ff1 ff2) -> comp tl1 tl2
-							| hd2::tl2 -> false
-						end
-		in
+	let rec startEval (rule, nbLine, ogStr) factz old firstTurn =
 		let rec printFactsList fl nbState =
 			match fl with
 			| []		-> print_char '\n'
 			| hd::tl	-> print_endline ("State number " ^ (string_of_int nbState) ^ " :"); Expertsys.printFacts hd; print_char '\n'; printFactsList tl (nbState + 1)
 		in
-		let nf = Expertsys.makeEval rule factz (nbLine, ogStr) in
-			(* factz; *)
-			(* print_endline ("HAHAHAHHAHHAHHAHAHAHHAHAHAHAHHAHAH"); *)
+		let nf = Expertsys.makeEval rule factz (nbLine, ogStr) firstTurn in
 		if verbose || debug then
 			begin
 				print_endline ("Evaluating rule line " ^ (string_of_int nbLine) ^ " : " ^ ogStr);
@@ -239,21 +241,17 @@ let executeExpSys (rules, facts, queries) debug verbose =
 				print_endline ("After evaluation there is " ^ (string_of_int (List.length nf)) ^ " different(s) state(s)\n");
 				if debug then printFactsList nf 1;
 			end;
-		if (comp nf factz) = false then
-			loop old nf []
+		if (Expertsys.compareListOfFactsList nf factz) = false then
+			loop old nf [] false
 		else
 			nf
-	(* in *)
-	(* let rec loop rulez factz = *)
-	and loop rulez factz old =
+	and loop rulez factz old firstTurn =
 		match rulez with
 		| [] -> factz
-		(* | hd::tl -> loop tl (startEval hd factz) *)
-		| hd::tl -> loop tl (startEval hd factz old) (old @ [hd])
+		| hd::tl -> loop tl (startEval hd factz old firstTurn) (old @ [hd]) firstTurn
 	in
 	if verbose then print_endline "\nEvaluating ...\n";
-	(* let finalFacts = loop rules [facts] in *)
-	let finalFacts = loop rules [facts] [] in
+	let finalFacts = loop rules [facts] [] true in
 	checkQueries finalFacts;
 	if verbose then print_endline "\n... done"
 
