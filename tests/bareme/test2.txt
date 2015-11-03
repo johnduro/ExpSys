@@ -1,10 +1,15 @@
-B + !C => A
-B => A
-C => A
+B + C => A 
+D | E => B 
+B => C
 
-=
-# =B
-# =C
-# =BC
-
+#[INITIAL FACTS HERE] 
 ?A
+
+#With =, A should be false. 
+=
+#With =D, A should be true. 
+#=D
+#With =E, A should be true. 
+#=E
+#With =DE, A should be true. 
+#=DE

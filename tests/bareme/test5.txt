@@ -1,4 +1,5 @@
-B + !C => A 
+B => A 
+C => A 
 
 #[INITIAL FACTS HERE] 
 ?A 
@@ -7,7 +8,7 @@ B + !C => A
 =
 #With =B, A should be true. 
 #=B
-#With =C, A should be false. 
+#With =C, A should be true. 
 #=C
-#With =BC, A should be false. 
+#With =BC, A should be true. 
 #=BC

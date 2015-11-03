@@ -1,15 +1,16 @@
-A => B
-C => D
+B => A 
+D + E => B 
+G + H => F 
+I + J => G 
+G => H 
+L + M => K 
+O + P => L + N 
+N => M
 
+#[INITIAL FACTS HERE] 
+?AFKP
 
-=EF
-
-? AC
-# B + !C => A
-
-# =
-# =B
-# =C
-# =BC
-
-# ?A
+#With =DEIJOP, AFKP is true. 
+=DEIJOP
+#With =DEIJP, AFP is true, K is false. 
+#=DEIJP
